@@ -26,7 +26,7 @@ export default function ChatBox({ messages, onSendMessage, isLoading }: ChatBoxP
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
         {messages.map((message, index) => (
           <div
             key={index}

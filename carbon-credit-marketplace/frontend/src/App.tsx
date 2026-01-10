@@ -8,6 +8,7 @@ import Calculator from './pages/Calculator'
 import Matching from './pages/Matching'
 import Marketplace from './pages/Marketplace'
 import Formalities from './pages/Formalities'
+import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   return (
@@ -16,12 +17,54 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/education" element={<Education />} />
-        <Route path="/calculator" element={<Calculator />} />
-        <Route path="/matching" element={<Matching />} />
-        <Route path="/marketplace" element={<Marketplace />} />
-        <Route path="/formalities" element={<Formalities />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/education"
+          element={
+            <ProtectedRoute>
+              <Education />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/calculator"
+          element={
+            <ProtectedRoute>
+              <Calculator />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/matching"
+          element={
+            <ProtectedRoute>
+              <Matching />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/marketplace"
+          element={
+            <ProtectedRoute>
+              <Marketplace />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/formalities"
+          element={
+            <ProtectedRoute>
+              <Formalities />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   )

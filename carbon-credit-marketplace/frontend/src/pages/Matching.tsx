@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import Layout from '../components/Layout';
 import SellerCard from '../components/SellerCard';
 import { matchingAPI } from '../api/client';
 import { SellerMatch } from '../types';
+import { useToast } from '../context/ToastContext';
 
 export default function Matching() {
+  const location = useLocation();
   const [formData, setFormData] = useState({
     credits_needed: '',
     max_price: '',
@@ -13,6 +16,18 @@ export default function Matching() {
   });
   const [matches, setMatches] = useState<SellerMatch[]>([]);
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
+
+  // Pre-fill form if navigated from Calculator
+  useEffect(() => {
+    if (location.state?.creditsNeeded) {
+      setFormData((prev) => ({
+        ...prev,
+        credits_needed: location.state.creditsNeeded.toString(),
+        max_price: location.state.costEstimate ? Math.ceil(location.state.costEstimate / location.state.creditsNeeded).toString() : '',
+      }));
+    }
+  }, [location.state]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,9 +40,12 @@ export default function Matching() {
         preferred_vintage: formData.preferred_vintage ? parseInt(formData.preferred_vintage) : undefined,
         preferred_project_type: formData.preferred_project_type || undefined,
       });
-      setMatches(response.data.matches);
-    } catch (error) {
-      alert('Failed to find matches. Please try again.');
+      setMatches(response.data.matches || []);
+      if ((response.data.matches || []).length === 0) {
+        showToast('No matches found. Try adjusting your criteria.', 'error');
+      }
+    } catch (error: any) {
+      showToast(error.response?.data?.detail || 'Failed to find matches. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
