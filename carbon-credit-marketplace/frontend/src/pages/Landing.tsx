@@ -1,33 +1,8 @@
 import { Link } from 'react-router-dom';
-
+ 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-blue-50 to-primary-200">
-      {/* Navigation Bar */}
-      <nav className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link to="/" className="text-2xl font-bold text-primary-600 hover:text-primary-700 transition-colors">
-              Carbon Market
-            </Link>
-            <div className="flex items-center space-x-4">
-              <Link
-                to="/login"
-                className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-              >
-                Login
-              </Link>
-              <Link
-                to="/register"
-                className="bg-primary-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary-700 transition-colors shadow-md hover:shadow-lg"
-              >
-                Get Started
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-50">
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-24">
         <div className="text-center">
@@ -54,50 +29,41 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* Features Grid */}
-        <div className="mt-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-          <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-100">
-            <div className="text-4xl mb-4">🎓</div>
-            <h3 className="text-xl font-bold mb-3 text-gray-900">Education Agent</h3>
-            <p className="text-gray-600 leading-relaxed">
+        {/* Features */}
+        <div className="mt-20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="text-3xl mb-4">🎓</div>
+            <h3 className="text-xl font-semibold mb-2">Education Agent</h3>
+            <p className="text-gray-600">
               Learn about carbon credits, regulations, and market dynamics
             </p>
           </div>
           
-          <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-100">
-            <div className="text-4xl mb-4">📊</div>
-            <h3 className="text-xl font-bold mb-3 text-gray-900">Calculator Agent</h3>
-            <p className="text-gray-600 leading-relaxed">
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="text-3xl mb-4">📊</div>
+            <h3 className="text-xl font-semibold mb-2">Calculator Agent</h3>
+            <p className="text-gray-600">
               Calculate your emissions and credit requirements
             </p>
           </div>
           
-          <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-100">
-            <div className="text-4xl mb-4">🤝</div>
-            <h3 className="text-xl font-bold mb-3 text-gray-900">Matching Agent</h3>
-            <p className="text-gray-600 leading-relaxed">
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="text-3xl mb-4">🤝</div>
+            <h3 className="text-xl font-semibold mb-2">Matching Agent</h3>
+            <p className="text-gray-600">
               Find the perfect sellers based on your needs
             </p>
           </div>
           
-          <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-100">
-            <div className="text-4xl mb-4">📋</div>
-            <h3 className="text-xl font-bold mb-3 text-gray-900">Formalities Advisor</h3>
-            <p className="text-gray-600 leading-relaxed">
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="text-3xl mb-4">📋</div>
+            <h3 className="text-xl font-semibold mb-2">Formalities Advisor</h3>
+            <p className="text-gray-600">
               Navigate government procedures and compliance
             </p>
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 mt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-gray-400">
-            © 2024 Carbon Credit Marketplace. All rights reserved.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
