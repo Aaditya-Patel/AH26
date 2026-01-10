@@ -38,3 +38,24 @@ async def get_completion(prompt: str, system_prompt: str = None) -> str:
         return response.choices[0].message.content
     except Exception as e:
         raise Exception(f"Error getting completion: {str(e)}")
+
+
+async def get_completion_stream(prompt: str, system_prompt: str = None):
+    """Get streaming completion from GPT-4o-mini"""
+    try:
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
+        stream = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            stream=True
+        )
+        
+        async for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                yield chunk.choices[0].delta.content
+    except Exception as e:
+        raise Exception(f"Error getting streaming completion: {str(e)}")

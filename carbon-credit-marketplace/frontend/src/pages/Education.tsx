@@ -38,24 +38,69 @@ export default function Education() {
   const handleSendMessage = async (message: string) => {
     if (!message.trim() || loading) return;
     
-    setMessages((prev) => [...prev, { role: 'user', content: message }]);
     setInput('');
     setLoading(true);
 
+    // Add user message and assistant message immediately for streaming
+    setMessages((prev) => [...prev, { role: 'user', content: message }, { role: 'assistant', content: '' }]);
+
     try {
-      const response = await educationAPI.chat(message);
-      const { answer, sources } = response.data;
+      let accumulatedContent = '';
       
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: answer, sources },
-      ]);
+      for await (const chunk of educationAPI.chatStream(message)) {
+        // Try to parse as JSON (for sources or errors)
+        try {
+          const parsed = JSON.parse(chunk);
+          
+          if (parsed.type === 'sources') {
+            // Update the last message (assistant) with sources
+            setMessages((prev) => {
+              const updated = [...prev];
+              const lastIndex = updated.length - 1;
+              if (updated[lastIndex] && updated[lastIndex].role === 'assistant') {
+                updated[lastIndex] = {
+                  ...updated[lastIndex],
+                  content: accumulatedContent,
+                  sources: parsed.sources,
+                };
+              }
+              return updated;
+            });
+            break;
+          } else if (parsed.type === 'error') {
+            throw new Error(parsed.message);
+          }
+        } catch {
+          // Not JSON, it's a text chunk
+          accumulatedContent += chunk;
+          
+          // Update the last message (assistant) content incrementally
+          setMessages((prev) => {
+            const updated = [...prev];
+            const lastIndex = updated.length - 1;
+            if (updated[lastIndex] && updated[lastIndex].role === 'assistant') {
+              updated[lastIndex] = {
+                ...updated[lastIndex],
+                content: accumulatedContent,
+              };
+            }
+            return updated;
+          });
+        }
+      }
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || 'Sorry, I encountered an error. Please try again.';
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: errorMessage },
-      ]);
+      const errorMessage = error.message || 'Sorry, I encountered an error. Please try again.';
+      setMessages((prev) => {
+        const updated = [...prev];
+        const lastIndex = updated.length - 1;
+        if (updated[lastIndex] && updated[lastIndex].role === 'assistant') {
+          updated[lastIndex] = {
+            ...updated[lastIndex],
+            content: errorMessage,
+          };
+        }
+        return updated;
+      });
     } finally {
       setLoading(false);
     }

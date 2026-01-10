@@ -43,6 +43,61 @@ export const authAPI = {
 // Education API
 export const educationAPI = {
   chat: (question: string) => apiClient.post('/api/education/chat', { question }),
+  chatStream: async function* (question: string) {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const token = localStorage.getItem('token');
+    
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(`${API_URL}/api/education/chat/stream`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ question }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    
+    if (!reader) {
+      throw new Error('Response body is not readable');
+    }
+    
+    let buffer = '';
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) {
+        break;
+      }
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          yield data;
+        }
+      }
+    }
+    
+    // Process remaining buffer
+    if (buffer.startsWith('data: ')) {
+      yield buffer.slice(6);
+    }
+  },
 };
 
 // Calculator API
