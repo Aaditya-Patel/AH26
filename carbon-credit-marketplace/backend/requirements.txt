@@ -1,0 +1,28 @@
+# FastAPI
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-multipart==0.0.6
+
+# Database
+sqlalchemy[asyncio]==2.0.23
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# AI/ML
+openai==1.6.1
+langchain==0.1.0
+langchain-openai==0.0.2
+langgraph==0.0.20
+tiktoken==0.5.2
+qdrant-client==1.7.0
+
+# Utilities
+python-dotenv==1.0.0
+pytz==2023.3
+httpx==0.25.2
