@@ -18,7 +18,8 @@ import {
   User,
   ArrowLeftRight,
   Wallet,
-  ClipboardCheck
+  ClipboardCheck,
+  LogIn
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
@@ -67,10 +68,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         animate={{ y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
+        <div className="flex items-center h-16 justify-between">
+          {/* Logo - Positioned at absolute left */}
+          <Link to="/" className="flex items-center space-x-2 pl-4 sm:pl-6 lg:pl-8 flex-shrink-0">
               <motion.div
                 className="w-10 h-10 rounded-lg bg-gradient-to-br from-swachh-green-500 to-swachh-marigold-500 flex items-center justify-center"
                 whileHover={{ rotate: 360 }}
@@ -81,83 +81,103 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <span className="text-xl font-bold font-display hidden sm:block whitespace-nowrap">
                 <GradientText>Carbon Market</GradientText>
               </span>
-            </Link>
-            
-            {isAuthenticated && (
-              <>
-                {/* Desktop Menu */}
-                <div className="hidden lg:flex items-center space-x-1">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={cn(
-                        "flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                        isActive(item.path)
-                          ? "bg-swachh-green-500/10 text-swachh-green-600 dark:text-swachh-green-400"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                      )}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.label}</span>
-                      {isActive(item.path) && (
-                        <motion.div
-                          layoutId="nav-indicator"
-                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-swachh-green-500"
-                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                        />
-                      )}
-                    </Link>
-                  ))}
-                </div>
-
-                {/* Right side controls */}
-                <div className="flex items-center space-x-3">
-                  <ThemeToggle />
-                  
-                  {/* User info - Desktop */}
-                  <div className="hidden md:flex items-center space-x-2 glass px-3 py-1.5 rounded-lg">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium truncate max-w-[120px]">
-                      {user?.company_name}
-                    </span>
-                  </div>
-                  
-                  {/* Logout button */}
-                  <Button
-                    onClick={handleLogout}
-                    variant="outline"
-                    size="sm"
-                    className="hidden md:flex"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
-                  </Button>
-
-                  {/* Mobile Menu Button */}
-                  <button
-                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors"
-                    aria-label="Toggle menu"
-                  >
+          </Link>
+          
+          {/* Center Navigation Menu */}
+          {isAuthenticated && (
+            <div className="hidden lg:flex items-center space-x-1 flex-1 justify-center max-w-4xl mx-auto">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    "flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                    isActive(item.path)
+                      ? "bg-swachh-green-500/10 text-swachh-green-600 dark:text-swachh-green-400"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                  {isActive(item.path) && (
                     <motion.div
-                      animate={{ rotate: mobileMenuOpen ? 90 : 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {mobileMenuOpen ? (
-                        <X className="h-6 w-6" />
-                      ) : (
-                        <Menu className="h-6 w-6" />
-                      )}
-                    </motion.div>
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+                      layoutId="nav-indicator"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-swachh-green-500"
+                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
 
-          {/* Mobile Menu */}
-          <AnimatePresence>
+          {/* Right side controls - Positioned at absolute right */}
+          {isAuthenticated ? (
+            <div className="flex items-center space-x-3 pr-4 sm:pr-6 lg:pr-8 flex-shrink-0">
+              <ThemeToggle />
+              
+              {/* Profile button - Desktop */}
+              <Link to="/dashboard">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hidden md:flex"
+                >
+                  <User className="w-4 h-4 mr-2" />
+                  Profile
+                </Button>
+              </Link>
+              
+              {/* Logout button */}
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                size="sm"
+                className="hidden md:flex"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors"
+                aria-label="Toggle menu"
+              >
+                <motion.div
+                  animate={{ rotate: mobileMenuOpen ? 90 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {mobileMenuOpen ? (
+                    <X className="h-6 w-6" />
+                  ) : (
+                    <Menu className="h-6 w-6" />
+                  )}
+                </motion.div>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-3 pr-4 sm:pr-6 lg:pr-8 flex-shrink-0">
+              <ThemeToggle />
+              
+              {/* Login button */}
+              <Link to="/login">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="hidden md:flex"
+                >
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Login
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Menu */}
+        <AnimatePresence>
             {isAuthenticated && mobileMenuOpen && (
               <motion.div
                 className="lg:hidden border-t border-border/50 py-4 glass-card rounded-b-xl -mx-4 px-4"
@@ -190,12 +210,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     </motion.div>
                   ))}
                   
-                  {/* Mobile user info */}
-                  <div className="border-t border-border/50 pt-4 mt-2">
-                    <div className="flex items-center space-x-3 px-4 py-2 glass rounded-lg mb-3">
-                      <User className="w-5 h-5 text-muted-foreground" />
-                      <span className="font-medium">{user?.company_name}</span>
-                    </div>
+                  {/* Mobile user actions */}
+                  <div className="border-t border-border/50 pt-4 mt-2 space-y-2">
+                    <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="outline" className="w-full">
+                        <User className="w-4 h-4 mr-2" />
+                        Profile
+                      </Button>
+                    </Link>
                     <Button
                       onClick={handleLogout}
                       variant="destructive"
@@ -209,7 +231,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
       </motion.nav>
 
       {/* Toast Container */}
