@@ -1,24 +1,49 @@
 import { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { motion, AnimatePresence } from 'framer-motion';
+import { HiPlus, HiX } from 'react-icons/hi';
 import Layout from '../components/Layout';
 import { marketplaceAPI } from '../api/client';
 import { Listing } from '../types';
 import { useAuthStore } from '../store/store';
 import { useToast } from '../context/ToastContext';
+import { listingSchema, ListingFormData } from '../schemas/listing.schema';
+import AnimatedInput from '../components/AnimatedInput';
+import AnimatedButton from '../components/AnimatedButton';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { slideInRight, slideUp } from '../utils/animations';
 
 export default function Marketplace() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [formLoading, setFormLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    quantity: '',
-    price_per_credit: '',
-    vintage: new Date().getFullYear().toString(),
+  const [filters, setFilters] = useState({
+    vintage: '',
     project_type: '',
-    description: '',
+    min_price: '',
+    max_price: '',
   });
   const { user } = useAuthStore();
   const { showToast } = useToast();
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors, isSubmitting },
+    setError: setFormError,
+  } = useForm<ListingFormData>({
+    resolver: zodResolver(listingSchema),
+    defaultValues: {
+      quantity: 0,
+      price_per_credit: 0,
+      vintage: new Date().getFullYear(),
+      project_type: '',
+      description: '',
+    },
+  });
 
   useEffect(() => {
     loadListings();
@@ -36,33 +61,23 @@ export default function Marketplace() {
     }
   };
 
-  const handleSubmitListing = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormLoading(true);
+  const onSubmitListing = async (data: ListingFormData) => {
     try {
       await marketplaceAPI.createListing({
-        quantity: parseInt(formData.quantity),
-        price_per_credit: parseFloat(formData.price_per_credit),
-        vintage: parseInt(formData.vintage),
-        project_type: formData.project_type,
-        description: formData.description || undefined,
+        quantity: data.quantity,
+        price_per_credit: data.price_per_credit,
+        vintage: data.vintage,
+        project_type: data.project_type,
+        description: data.description || undefined,
       });
-      // Reset form
-      setFormData({
-        quantity: '',
-        price_per_credit: '',
-        vintage: new Date().getFullYear().toString(),
-        project_type: '',
-        description: '',
-      });
+      reset();
       setShowAddForm(false);
-      // Reload listings
       await loadListings();
-      alert('Listing created successfully!');
+      showToast('Listing created successfully!', 'success');
     } catch (error: any) {
-      alert(error.response?.data?.detail || 'Failed to create listing. Please try again.');
-    } finally {
-      setFormLoading(false);
+      const errorMessage = error.response?.data?.detail || 'Failed to create listing. Please try again.';
+      setFormError('root', { message: errorMessage });
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -79,12 +94,22 @@ export default function Marketplace() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Marketplace</h1>
           {user?.user_type === 'seller' && (
-            <button
+            <AnimatedButton
               onClick={() => setShowAddForm(!showAddForm)}
-              className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700"
+              className="flex items-center space-x-2"
             >
-              {showAddForm ? 'Cancel' : 'List Credits'}
-            </button>
+              {showAddForm ? (
+                <>
+                  <HiX className="w-5 h-5" />
+                  <span>Cancel</span>
+                </>
+              ) : (
+                <>
+                  <HiPlus className="w-5 h-5" />
+                  <span>List Credits</span>
+                </>
+              )}
+            </AnimatedButton>
           )}
         </div>
 
@@ -164,108 +189,131 @@ export default function Marketplace() {
         </div>
 
         {/* Create Listing Form */}
-        {showAddForm && (
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 className="text-2xl font-semibold mb-6">Create New Listing</h2>
-            <form onSubmit={handleSubmitListing} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantity (credits) *
-                  </label>
-                  <input
+        <AnimatePresence>
+          {showAddForm && (
+            <motion.div
+              className="bg-white rounded-lg shadow p-6 mb-8"
+              variants={slideInRight}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <h2 className="text-2xl font-semibold mb-6">Create New Listing</h2>
+              <AnimatePresence>
+                {errors.root && (
+                  <motion.div
+                    className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    {errors.root.message}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <form onSubmit={handleSubmit(onSubmitListing)} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <AnimatedInput
+                    {...register('quantity', { valueAsNumber: true })}
                     type="number"
                     min="1"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600"
-                    required
+                    label="Quantity (credits) *"
+                    error={errors.quantity?.message}
                   />
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Price per Credit (₹) *
-                  </label>
-                  <input
+                  <AnimatedInput
+                    {...register('price_per_credit', { valueAsNumber: true })}
                     type="number"
                     min="0"
                     step="0.01"
-                    value={formData.price_per_credit}
-                    onChange={(e) => setFormData({ ...formData, price_per_credit: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600"
-                    required
+                    label="Price per Credit (₹) *"
+                    error={errors.price_per_credit?.message}
                   />
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Vintage (Year) *
-                  </label>
-                  <input
+                  <AnimatedInput
+                    {...register('vintage', { valueAsNumber: true })}
                     type="number"
-                    min="2020"
-                    max="2030"
-                    value={formData.vintage}
-                    onChange={(e) => setFormData({ ...formData, vintage: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600"
-                    required
+                    min="2000"
+                    max={new Date().getFullYear()}
+                    label="Vintage (Year) *"
+                    error={errors.vintage?.message}
                   />
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Project Type *
+                    </label>
+                    <Controller
+                      name="project_type"
+                      control={control}
+                      render={({ field }) => (
+                        <motion.select
+                          {...field}
+                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 ${
+                            errors.project_type ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                          }`}
+                          whileFocus={{ scale: 1.01 }}
+                        >
+                          <option value="">Select project type</option>
+                          {projectTypes.map((type) => (
+                            <option key={type} value={type}>
+                              {type}
+                            </option>
+                          ))}
+                        </motion.select>
+                      )}
+                    />
+                    {errors.project_type && (
+                      <motion.p
+                        className="mt-1 text-sm text-red-600"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                      >
+                        {errors.project_type.message}
+                      </motion.p>
+                    )}
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Project Type *
+                    Description (optional)
                   </label>
-                  <select
-                    value={formData.project_type}
-                    onChange={(e) => setFormData({ ...formData, project_type: e.target.value })}
+                  <motion.textarea
+                    {...register('description')}
+                    rows={4}
                     className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600"
-                    required
-                  >
-                    <option value="">Select project type</option>
-                    {projectTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Add any additional details about your credit listing..."
+                    whileFocus={{ scale: 1.01 }}
+                  />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description (optional)
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={4}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600"
-                  placeholder="Add any additional details about your credit listing..."
-                />
-              </div>
-
-              <div className="flex space-x-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddForm(false)}
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300"
-                  disabled={formLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={formLoading}
-                  className="flex-1 bg-primary-600 text-white py-3 rounded-lg hover:bg-primary-700 disabled:opacity-50"
-                >
-                  {formLoading ? 'Creating...' : 'Create Listing'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+                <div className="flex space-x-4">
+                  <AnimatedButton
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      reset();
+                    }}
+                    disabled={isSubmitting}
+                    className="flex-1 py-3"
+                  >
+                    Cancel
+                  </AnimatedButton>
+                  <AnimatedButton
+                    type="submit"
+                    isLoading={isSubmitting}
+                    className="flex-1 py-3"
+                  >
+                    {isSubmitting ? 'Creating...' : 'Create Listing'}
+                  </AnimatedButton>
+                </div>
+              </form>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {loading ? (
           <div className="text-center py-12">

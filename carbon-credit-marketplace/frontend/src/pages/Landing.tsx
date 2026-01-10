@@ -1,4 +1,7 @@
 import { Link } from 'react-router-dom';
+import { HiAcademicCap, HiChartBar, HiUserGroup, HiDocumentText } from 'react-icons/hi';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem } from '../utils/animations';
  
 export default function Landing() {
   return (
@@ -55,39 +58,61 @@ export default function Landing() {
         </div>
  
         {/* Features Grid */}
-        <div className="mt-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-          <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-100">
-            <div className="text-4xl mb-4">🎓</div>
+        <motion.div
+          className="mt-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8"
+          variants={staggerContainer}
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, amount: 0.2 }}
+        >
+          <motion.div
+            className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all border border-gray-100"
+            variants={staggerItem}
+            whileHover={{ scale: 1.02, y: -4 }}
+          >
+            <HiAcademicCap className="text-5xl mb-4 text-primary-600" />
             <h3 className="text-xl font-bold mb-3 text-gray-900">Education Agent</h3>
             <p className="text-gray-600 leading-relaxed">
               Learn about carbon credits, regulations, and market dynamics
             </p>
-          </div>
+          </motion.div>
          
-          <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-100">
-            <div className="text-4xl mb-4">📊</div>
+          <motion.div
+            className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all border border-gray-100"
+            variants={staggerItem}
+            whileHover={{ scale: 1.02, y: -4 }}
+          >
+            <HiChartBar className="text-5xl mb-4 text-primary-600" />
             <h3 className="text-xl font-bold mb-3 text-gray-900">Calculator Agent</h3>
             <p className="text-gray-600 leading-relaxed">
               Calculate your emissions and credit requirements
             </p>
-          </div>
+          </motion.div>
          
-          <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-100">
-            <div className="text-4xl mb-4">🤝</div>
+          <motion.div
+            className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all border border-gray-100"
+            variants={staggerItem}
+            whileHover={{ scale: 1.02, y: -4 }}
+          >
+            <HiUserGroup className="text-5xl mb-4 text-primary-600" />
             <h3 className="text-xl font-bold mb-3 text-gray-900">Matching Agent</h3>
             <p className="text-gray-600 leading-relaxed">
               Find the perfect sellers based on your needs
             </p>
-          </div>
+          </motion.div>
          
-          <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-100">
-            <div className="text-4xl mb-4">📋</div>
+          <motion.div
+            className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all border border-gray-100"
+            variants={staggerItem}
+            whileHover={{ scale: 1.02, y: -4 }}
+          >
+            <HiDocumentText className="text-5xl mb-4 text-primary-600" />
             <h3 className="text-xl font-bold mb-3 text-gray-900">Formalities Advisor</h3>
             <p className="text-gray-600 leading-relaxed">
               Navigate government procedures and compliance
             </p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
  
       {/* Footer */}

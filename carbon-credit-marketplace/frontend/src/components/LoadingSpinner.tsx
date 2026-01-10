@@ -1,3 +1,6 @@
+import { motion } from 'framer-motion';
+import { spinner } from '../utils/animations';
+
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
   className?: string;
@@ -12,9 +15,11 @@ export default function LoadingSpinner({ size = 'md', className = '' }: LoadingS
 
   return (
     <div className={`flex items-center justify-center ${className}`}>
-      <div
-        className={`${sizeClasses[size]} border-primary-600 border-t-transparent rounded-full animate-spin`}
-      ></div>
+      <motion.div
+        className={`${sizeClasses[size]} border-primary-600 border-t-transparent rounded-full`}
+        animate={spinner.animate.rotate}
+        transition={spinner.animate.transition}
+      ></motion.div>
     </div>
   );
 }
