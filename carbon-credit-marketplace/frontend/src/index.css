@@ -175,6 +175,45 @@
     mask-composite: exclude;
   }
 
+  /* Gradient Border Button */
+  .btn-gradient-border {
+    position: relative;
+    background: hsl(var(--background));
+    border: 2px solid transparent;
+    color: hsl(var(--foreground));
+  }
+
+  .btn-gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    padding: 2px;
+    background: linear-gradient(to right, #10b981, #f97316, #FF9933);
+    -webkit-mask: 
+      linear-gradient(#fff 0 0) content-box, 
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: 
+      linear-gradient(#fff 0 0) content-box, 
+      linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .btn-gradient-border:hover::before {
+    background: linear-gradient(to right, #059669, #ea580c, #fb923c);
+  }
+
+  .dark .btn-gradient-border {
+    background: hsl(var(--background));
+  }
+
+  .dark .btn-gradient-border:hover {
+    background: hsl(var(--card));
+  }
+
   /* Code Block Styling */
   .code-block {
     @apply font-mono text-sm rounded-lg p-4;
@@ -254,6 +293,32 @@
   .dark .card-hover:hover {
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   }
+
+  /* Number Input Spinner Styling - Style spinners for dark mode */
+  /* Chrome, Safari, Edge, Opera - Dark mode spinner styling */
+  .dark input[type="number"]::-webkit-inner-spin-button,
+  .dark input[type="number"]::-webkit-outer-spin-button {
+    opacity: 0.6;
+    filter: brightness(0.4) contrast(1.2);
+    cursor: pointer;
+    height: 20px;
+    width: 20px;
+  }
+
+  .dark input[type="number"]::-webkit-inner-spin-button:hover,
+  .dark input[type="number"]::-webkit-outer-spin-button:hover {
+    opacity: 0.9;
+    filter: brightness(0.6) contrast(1.3);
+  }
+
+  .dark input[type="number"]::-webkit-inner-spin-button:active,
+  .dark input[type="number"]::-webkit-outer-spin-button:active {
+    opacity: 1;
+    filter: brightness(0.7);
+  }
+
+  /* Firefox - Keep native spinners (they adapt better to dark mode) */
+  /* No special styling needed for Firefox as it handles dark mode better natively */
 }
 
 @layer utilities {

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, User, ExternalLink } from 'lucide-react';
+import { Send, Sparkles, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -87,8 +87,7 @@ export default function ChatBox({ messages, onSendMessage, isLoading }: ChatBoxP
                 {/* Sources */}
                 {message.sources && message.sources.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-white/10">
-                    <p className="text-xs text-muted-foreground mb-2 flex items-center">
-                      <ExternalLink className="w-3 h-3 mr-1" />
+                    <p className="text-xs text-muted-foreground mb-2 font-medium">
                       Sources
                     </p>
                     <div className="flex flex-wrap gap-1">

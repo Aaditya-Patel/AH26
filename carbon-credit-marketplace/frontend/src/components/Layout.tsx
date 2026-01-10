@@ -78,7 +78,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               >
                 <Leaf className="w-6 h-6 text-white" />
               </motion.div>
-              <span className="text-xl font-bold font-display hidden sm:block">
+              <span className="text-xl font-bold font-display hidden sm:block whitespace-nowrap">
                 <GradientText>Carbon Market</GradientText>
               </span>
             </Link>

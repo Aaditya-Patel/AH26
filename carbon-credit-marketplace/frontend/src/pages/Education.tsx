@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Send, Sparkles, MessageCircle, ExternalLink } from 'lucide-react';
+import { BookOpen, Send, Sparkles, MessageCircle } from 'lucide-react';
 import Layout from '../components/Layout';
 import { educationAPI } from '../api/client';
 import { GlassCard } from '@/components/GlassCard';
@@ -167,8 +167,7 @@ export default function Education() {
                         {/* Sources */}
                         {message.sources && message.sources.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-white/10">
-                            <p className="text-xs text-muted-foreground mb-2 flex items-center">
-                              <ExternalLink className="w-3 h-3 mr-1" />
+                            <p className="text-xs text-muted-foreground mb-2 font-medium">
                               Sources
                             </p>
                             <div className="flex flex-wrap gap-1">

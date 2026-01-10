@@ -2,6 +2,11 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// Log API URL for debugging (only in development)
+if (import.meta.env.DEV) {
+  console.log('🔗 API URL:', API_URL);
+}
+
 const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
@@ -18,15 +23,37 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 errors
+// Handle errors
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Log error details for debugging
+    if (import.meta.env.DEV) {
+      console.error('❌ API Error:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        data: error.response?.data,
+      });
+    }
+
+    // Handle 401 Unauthorized
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+    
+    // Handle network errors (CORS, connection refused, etc.)
+    if (!error.response) {
+      console.error('🚫 Network Error - Check if backend is running and CORS is configured:', {
+        baseURL: API_URL,
+        message: error.message,
+      });
+    }
+
     return Promise.reject(error);
   }
 );

@@ -21,7 +21,7 @@ const buttonVariants = cva(
         link:
           "text-swachh-green-500 underline-offset-4 hover:underline",
         gradient:
-          "bg-gradient-to-r from-swachh-green-500 via-swachh-marigold-500 to-swachh-saffron text-white shadow-lg hover:shadow-xl hover:scale-105 transform",
+          "btn-gradient-border text-foreground hover:scale-105 transform shadow-lg hover:shadow-xl hover:shadow-swachh-green-500/20 relative",
         glass:
           "glass text-foreground hover:bg-white/20 dark:hover:bg-white/10",
         glow:

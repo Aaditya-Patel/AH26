@@ -421,6 +421,18 @@ async def surrender_credits_for_compliance(
             detail="No credits shortfall to surrender for"
         )
     
+    if amount <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Amount must be greater than 0"
+        )
+    
+    if amount > record.credits_shortfall:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Amount cannot exceed shortfall of {record.credits_shortfall} credits"
+        )
+    
     # Get user's credit account
     account = await get_or_create_credit_account(db, user_uuid)
     

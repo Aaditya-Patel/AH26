@@ -87,7 +87,7 @@ export default function Landing() {
               >
                 <Leaf className="w-6 h-6 text-white" />
               </motion.div>
-              <span className="text-xl font-bold font-display">
+              <span className="text-xl font-bold font-display whitespace-nowrap">
                 <GradientText>Carbon Market</GradientText>
               </span>
             </Link>

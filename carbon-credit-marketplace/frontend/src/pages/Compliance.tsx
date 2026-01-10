@@ -162,8 +162,19 @@ export default function Compliance() {
     const amount = prompt(`Enter credits to surrender (max: ${record.credits_shortfall}):`);
     if (!amount) return;
 
+    const amountNum = parseInt(amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      showToast('Please enter a valid number greater than 0', 'error');
+      return;
+    }
+
+    if (amountNum > record.credits_shortfall) {
+      showToast(`Amount cannot exceed shortfall of ${record.credits_shortfall} credits`, 'error');
+      return;
+    }
+
     try {
-      await complianceAPI.surrenderCredits(record.id, parseInt(amount));
+      await complianceAPI.surrenderCredits(record.id, amountNum);
       showToast('Credits surrendered successfully!', 'success');
       await loadData();
     } catch (error: any) {
