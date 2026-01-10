@@ -1,9 +1,14 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BookOpen, Send, Sparkles, MessageCircle, ExternalLink } from 'lucide-react';
 import Layout from '../components/Layout';
-import ChatBox from '../components/ChatBox';
 import { educationAPI } from '../api/client';
-import LoadingSpinner from '../components/LoadingSpinner';
-import { useToast } from '../context/ToastContext';
+import { GlassCard } from '@/components/GlassCard';
+import { GradientText } from '@/components/GradientText';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -11,19 +16,30 @@ interface Message {
   sources?: string[];
 }
 
+const suggestedQuestions = [
+  'What are carbon credits?',
+  'How does the CCTS work?',
+  'What are the 9 industrial sectors covered?',
+  'Explain the MRV process',
+  'What is carbon trading?',
+  'How to offset emissions?',
+];
+
 export default function Education() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Hello! I\'m here to help you learn about carbon credits. Ask me anything!',
+      content: 'Hello! I\'m your AI Education Agent. I\'m here to help you learn about carbon credits, regulations, and market dynamics. Ask me anything!',
     },
   ]);
+  const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const { showToast } = useToast();
 
   const handleSendMessage = async (message: string) => {
-    // Add user message
+    if (!message.trim() || loading) return;
+    
     setMessages((prev) => [...prev, { role: 'user', content: message }]);
+    setInput('');
     setLoading(true);
 
     try {
@@ -38,56 +54,193 @@ export default function Education() {
       const errorMessage = error.response?.data?.detail || 'Sorry, I encountered an error. Please try again.';
       setMessages((prev) => [
         ...prev,
-        {
-          role: 'assistant',
-          content: errorMessage,
-        },
+        { role: 'assistant', content: errorMessage },
       ]);
-      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const suggestedQuestions = [
-    'What are carbon credits?',
-    'How does the CCTS work?',
-    'What are the 9 industrial sectors covered?',
-    'Explain the MRV process',
-  ];
-
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold mb-6">Education Agent</h1>
+        {/* Header */}
+        <motion.div
+          className="mb-8"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="flex items-center space-x-3 mb-2">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-swachh-green-500 to-swachh-marigold-500 flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold font-display">
+                Education <GradientText>Agent</GradientText>
+              </h1>
+              <p className="text-muted-foreground">Learn about carbon credits and regulations</p>
+            </div>
+          </div>
+        </motion.div>
         
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Chat */}
-          <div className="lg:col-span-3 bg-white rounded-lg shadow" style={{ height: '600px' }}>
-            <ChatBox
-              messages={messages}
-              onSendMessage={handleSendMessage}
-              isLoading={loading}
-            />
+          {/* Chat Container */}
+          <div className="lg:col-span-3">
+            <GlassCard className="h-[600px] flex flex-col overflow-hidden" hover={false}>
+              {/* Messages Area */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                <AnimatePresence>
+                  {messages.map((message, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className={cn(
+                        "flex",
+                        message.role === 'user' ? 'justify-end' : 'justify-start'
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "max-w-[80%] rounded-2xl p-4",
+                          message.role === 'user'
+                            ? 'bg-gradient-to-r from-swachh-green-500 to-swachh-green-600 text-white rounded-br-md'
+                            : 'glass rounded-bl-md'
+                        )}
+                      >
+                        {message.role === 'assistant' && (
+                          <div className="flex items-center space-x-2 mb-2">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-swachh-green-500 to-swachh-marigold-500 flex items-center justify-center">
+                              <Sparkles className="w-3 h-3 text-white" />
+                            </div>
+                            <span className="text-xs font-medium text-swachh-green-500">AI Agent</span>
+                          </div>
+                        )}
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                        
+                        {/* Sources */}
+                        {message.sources && message.sources.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-white/10">
+                            <p className="text-xs text-muted-foreground mb-2 flex items-center">
+                              <ExternalLink className="w-3 h-3 mr-1" />
+                              Sources
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {message.sources.map((source, i) => (
+                                <Badge key={i} variant="glass" className="text-xs">
+                                  {source}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+
+                {/* Loading Indicator */}
+                {loading && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex justify-start"
+                  >
+                    <div className="glass rounded-2xl rounded-bl-md p-4">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-swachh-green-500 to-swachh-marigold-500 flex items-center justify-center">
+                          <Sparkles className="w-3 h-3 text-white animate-pulse" />
+                        </div>
+                        <div className="flex space-x-1">
+                          <motion.div
+                            className="w-2 h-2 bg-swachh-green-500 rounded-full"
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
+                          />
+                          <motion.div
+                            className="w-2 h-2 bg-swachh-marigold-500 rounded-full"
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
+                          />
+                          <motion.div
+                            className="w-2 h-2 bg-swachh-saffron rounded-full"
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Input Area */}
+              <div className="p-4 border-t border-border/50">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendMessage(input);
+                  }}
+                  className="flex space-x-3"
+                >
+                  <div className="flex-1 relative">
+                    <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="Ask about carbon credits..."
+                      className="pl-10 pr-4"
+                      disabled={loading}
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    variant="gradient"
+                    disabled={loading || !input.trim()}
+                  >
+                    <Send className="w-5 h-5" />
+                  </Button>
+                </form>
+              </div>
+            </GlassCard>
           </div>
 
-          {/* Suggested Questions */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="font-semibold mb-4">Suggested Questions</h3>
+          {/* Sidebar */}
+          <div className="lg:col-span-1 space-y-6">
+            <GlassCard className="p-6" hover={false}>
+              <h3 className="font-semibold font-display mb-4 flex items-center">
+                <Sparkles className="w-4 h-4 text-swachh-marigold-500 mr-2" />
+                Suggested Questions
+              </h3>
               <div className="space-y-2">
                 {suggestedQuestions.map((question, index) => (
-                  <button
+                  <motion.button
                     key={index}
                     onClick={() => handleSendMessage(question)}
-                    className="w-full text-left px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm"
+                    className="w-full text-left px-4 py-3 glass rounded-lg text-sm hover:bg-swachh-green-500/10 transition-colors disabled:opacity-50"
                     disabled={loading}
+                    whileHover={{ x: 4 }}
+                    whileTap={{ scale: 0.98 }}
                   >
                     {question}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
-            </div>
+            </GlassCard>
+
+            {/* Info Card */}
+            <GlassCard className="p-6" glow="green">
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto rounded-xl bg-swachh-green-500/10 flex items-center justify-center mb-3">
+                  <BookOpen className="w-6 h-6 text-swachh-green-500" />
+                </div>
+                <h4 className="font-semibold mb-2">Knowledge Base</h4>
+                <p className="text-xs text-muted-foreground">
+                  Our AI is trained on CCTS regulations, carbon market dynamics, and sustainability best practices.
+                </p>
+              </div>
+            </GlassCard>
           </div>
         </div>
       </div>

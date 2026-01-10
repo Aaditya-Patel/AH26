@@ -37,11 +37,14 @@ export interface SellerMatch {
   seller_name: string;
   listing_id: string;
   quantity: number;
+  available_credits?: number;
   price_per_credit: number;
   vintage: number;
   project_type: string;
   match_score: number;
   reasons: string[];
+  match_reasons?: string[];
+  verification_status: string;
 }
 
 export interface WorkflowStep {
