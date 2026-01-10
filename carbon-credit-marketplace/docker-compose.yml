@@ -56,7 +56,10 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:8000
+      # Default to localhost for development
+      # Can be overridden by setting VITE_API_URL environment variable
+      # or by using docker-compose.prod.yml for production
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
 
 volumes:
   postgres_data:

@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     QDRANT_COLLECTION_NAME: str = "carbon_credits_kb"
     
     # OpenAI
-    OPENAI_API_KEY: str
+    OPENAI_API_KEY: str = ""
     
     # JWT
     SECRET_KEY: str = "your-secret-key-change-in-production-min-32-chars"
@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # App
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
+    
+    # CORS
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
     
     class Config:
         env_file = ".env"
