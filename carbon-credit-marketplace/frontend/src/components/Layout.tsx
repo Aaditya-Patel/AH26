@@ -15,7 +15,10 @@ import {
   FileText, 
   LogOut,
   Leaf,
-  User
+  User,
+  ArrowLeftRight,
+  Wallet,
+  ClipboardCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
@@ -24,11 +27,13 @@ import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/dashboard', icon: Home, label: 'Dashboard' },
-  { path: '/education', icon: BookOpen, label: 'Learn' },
+  { path: '/marketplace', icon: ShoppingBag, label: 'Marketplace' },
+  { path: '/transactions', icon: ArrowLeftRight, label: 'Transactions' },
+  { path: '/portfolio', icon: Wallet, label: 'Portfolio' },
+  { path: '/compliance', icon: ClipboardCheck, label: 'Compliance' },
   { path: '/calculator', icon: Calculator, label: 'Calculator' },
   { path: '/matching', icon: Users, label: 'Match' },
-  { path: '/marketplace', icon: ShoppingBag, label: 'Marketplace' },
-  { path: '/formalities', icon: FileText, label: 'Formalities' },
+  { path: '/education', icon: BookOpen, label: 'Learn' },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {

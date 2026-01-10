@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   ShoppingBag, 
   Plus, 
@@ -13,10 +14,14 @@ import {
   Building2,
   CheckCircle,
   Mail,
-  AlertCircle
+  AlertCircle,
+  ShoppingCart,
+  MapPin,
+  Award,
+  Info
 } from 'lucide-react';
 import Layout from '../components/Layout';
-import { marketplaceAPI } from '../api/client';
+import { marketplaceAPI, transactionsAPI } from '../api/client';
 import { Listing } from '../types';
 import { useAuthStore } from '../store/store';
 import { useToast } from '../context/ToastContext';
@@ -29,6 +34,13 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { staggerContainer, staggerItem } from '../utils/animations';
 
@@ -49,8 +61,13 @@ export default function Marketplace() {
     min_price: '',
     max_price: '',
   });
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [showBuyDialog, setShowBuyDialog] = useState(false);
+  const [buyQuantity, setBuyQuantity] = useState(1);
+  const [purchasing, setPurchasing] = useState(false);
   const { user } = useAuthStore();
   const { showToast } = useToast();
+  const navigate = useNavigate();
 
   const {
     register,
@@ -112,6 +129,84 @@ export default function Marketplace() {
     if (filters.max_price && listing.price_per_credit > parseFloat(filters.max_price)) return false;
     return true;
   });
+
+  const openBuyDialog = (listing: Listing) => {
+    if (user?.user_type === 'seller' && listing.seller_id === user.id) {
+      showToast('You cannot buy your own listing', 'error');
+      return;
+    }
+    setSelectedListing(listing);
+    setBuyQuantity(1);
+    setShowBuyDialog(true);
+  };
+
+  const handleBuy = async () => {
+    if (!selectedListing) return;
+    
+    // Use available_quantity if it exists, otherwise fallback to quantity
+    const maxQuantity = selectedListing.available_quantity ?? selectedListing.quantity;
+    
+    if (buyQuantity < 1 || buyQuantity > maxQuantity) {
+      showToast(`Invalid quantity. Maximum available: ${maxQuantity} credits`, 'error');
+      return;
+    }
+
+    try {
+      setPurchasing(true);
+      console.log('Attempting purchase:', {
+        listing_id: selectedListing.id,
+        quantity: buyQuantity,
+        available_quantity: maxQuantity
+      });
+      
+      const response = await transactionsAPI.buyCredits({
+        listing_id: selectedListing.id,
+        quantity: buyQuantity
+      });
+      
+      console.log('Purchase successful:', response.data);
+      showToast('Purchase initiated! Complete payment to receive credits.', 'success');
+      setShowBuyDialog(false);
+      setSelectedListing(null);
+      await loadListings();
+      // Navigate to transactions page
+      navigate('/transactions');
+    } catch (error: any) {
+      console.error('Purchase error:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      
+      // Extract detailed error message
+      let errorMessage = 'Failed to initiate purchase';
+      
+      if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'string') {
+          errorMessage = error.response.data.detail;
+        } else if (Array.isArray(error.response.data.detail)) {
+          // Handle validation errors
+          errorMessage = error.response.data.detail.map((err: any) => 
+            `${err.loc?.join('.')}: ${err.msg}`
+          ).join(', ');
+        } else if (error.response.data.detail.msg) {
+          errorMessage = error.response.data.detail.msg;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      showToast(errorMessage, 'error');
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
 
   return (
     <Layout>
@@ -446,7 +541,7 @@ export default function Marketplace() {
                   {/* Stats */}
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="glass rounded-lg p-3 text-center">
-                      <p className="text-xl font-bold text-swachh-green-500">{listing.quantity}</p>
+                      <p className="text-xl font-bold text-swachh-green-500">{listing.available_quantity || listing.quantity}</p>
                       <p className="text-xs text-muted-foreground">Credits Available</p>
                     </div>
                     <div className="glass rounded-lg p-3 text-center">
@@ -455,13 +550,37 @@ export default function Marketplace() {
                     </div>
                   </div>
 
-                  {/* Verification Badge */}
-                  <div className="mb-4">
-                    <Badge variant="default" className="flex items-center space-x-1 w-fit">
+                  {/* Verification Badge & Location */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <Badge variant="default" className="flex items-center space-x-1">
                       <CheckCircle className="w-3 h-3" />
                       <span>{listing.verification_status}</span>
                     </Badge>
+                    {listing.project_location && (
+                      <Badge variant="outline" className="flex items-center space-x-1">
+                        <MapPin className="w-3 h-3" />
+                        <span className="truncate max-w-[100px]">{listing.project_location}</span>
+                      </Badge>
+                    )}
                   </div>
+
+                  {/* Quality Scores */}
+                  {(listing.additionality_score || listing.permanence_score) && (
+                    <div className="flex gap-2 mb-4">
+                      {listing.additionality_score && (
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <Award className="w-3 h-3 mr-1 text-swachh-green-500" />
+                          Add: {listing.additionality_score}%
+                        </div>
+                      )}
+                      {listing.permanence_score && (
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <Award className="w-3 h-3 mr-1 text-swachh-marigold-500" />
+                          Perm: {listing.permanence_score}%
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Description */}
                   {listing.description && (
@@ -470,15 +589,46 @@ export default function Marketplace() {
                     </p>
                   )}
 
-                  {/* Contact Button */}
-                  <Button
-                    variant="gradient"
-                    className="w-full"
-                    onClick={() => showToast('Contact seller feature coming soon!', 'error')}
-                  >
-                    <Mail className="w-4 h-4 mr-2" />
-                    Contact Seller
-                  </Button>
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    {user?.user_type === 'buyer' || (user?.user_type === 'seller' && listing.seller_id !== user.id) ? (
+                      <Button
+                        variant="gradient"
+                        className="flex-1"
+                        onClick={() => openBuyDialog(listing)}
+                      >
+                        <ShoppingCart className="w-4 h-4 mr-2" />
+                        Buy Now
+                      </Button>
+                    ) : listing.seller_id === user?.id ? (
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        disabled
+                      >
+                        Your Listing
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="gradient"
+                        className="flex-1"
+                        onClick={() => openBuyDialog(listing)}
+                      >
+                        <ShoppingCart className="w-4 h-4 mr-2" />
+                        Buy Now
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        setSelectedListing(listing);
+                        setShowBuyDialog(false);
+                      }}
+                    >
+                      <Info className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </GlassCard>
               </motion.div>
             ))}
@@ -511,6 +661,104 @@ export default function Marketplace() {
             )}
           </motion.div>
         )}
+
+        {/* Buy Dialog */}
+        <Dialog open={showBuyDialog} onOpenChange={setShowBuyDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Purchase Carbon Credits</DialogTitle>
+              <DialogDescription>
+                {selectedListing?.seller_name} - {selectedListing?.project_type}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedListing && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Price per Credit</p>
+                    <p className="font-bold text-lg">{formatCurrency(selectedListing.price_per_credit)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Available</p>
+                    <p className="font-bold text-lg">{selectedListing.available_quantity ?? selectedListing.quantity}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Vintage</p>
+                    <p className="font-bold">{selectedListing.vintage}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Verification</p>
+                    <Badge variant="default" className="mt-1">{selectedListing.verification_status}</Badge>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="buy-quantity">Quantity to Buy</Label>
+                  <Input
+                    id="buy-quantity"
+                    type="number"
+                    min={1}
+                    max={selectedListing.available_quantity ?? selectedListing.quantity}
+                    value={buyQuantity}
+                    onChange={(e) => setBuyQuantity(parseInt(e.target.value) || 1)}
+                  />
+                </div>
+                
+                <div className="p-4 bg-swachh-green-500/10 rounded-lg space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>{formatCurrency(buyQuantity * selectedListing.price_per_credit)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Platform Fee (2%)</span>
+                    <span>{formatCurrency(buyQuantity * selectedListing.price_per_credit * 0.02)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">GST (18% on fee)</span>
+                    <span>{formatCurrency(buyQuantity * selectedListing.price_per_credit * 0.02 * 0.18)}</span>
+                  </div>
+                  <div className="border-t pt-2 flex justify-between font-bold">
+                    <span>Total</span>
+                    <span className="text-swachh-green-500">
+                      {formatCurrency(
+                        buyQuantity * selectedListing.price_per_credit * (1 + 0.02 + 0.02 * 0.18)
+                      )}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowBuyDialog(false)}
+                    className="flex-1"
+                    disabled={purchasing}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="gradient"
+                    onClick={handleBuy}
+                    className="flex-1"
+                    disabled={purchasing || buyQuantity < 1}
+                  >
+                    {purchasing ? (
+                      <motion.div
+                        className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full mr-2"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      />
+                    ) : (
+                      <ShoppingCart className="w-4 h-4 mr-2" />
+                    )}
+                    {purchasing ? 'Processing...' : 'Confirm Purchase'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
