@@ -279,6 +279,15 @@ except Exception as e:
     print(f"ERROR importing extended API routers: {e}", file=sys.stderr)
     traceback.print_exc()
     raise
+
+try:
+    from app.api import voice
+    print("✅ Voice API router imported")
+except Exception as e:
+    print(f"ERROR importing voice API router: {e}", file=sys.stderr)
+    traceback.print_exc()
+    # Voice API is optional, continue without it
+    voice = None
 # endregion agent log
 
 try:
@@ -307,3 +316,12 @@ except Exception as e:
     print(f"ERROR including extended routers: {e}", file=sys.stderr)
     traceback.print_exc()
     raise
+
+try:
+    if voice:
+        app.include_router(voice.router, prefix="/api/voice", tags=["Voice (TTS/STT)"])
+        print("✅ Voice router included")
+except Exception as e:
+    print(f"ERROR including voice router: {e}", file=sys.stderr)
+    traceback.print_exc()
+    print("⚠️  Voice features will not be available")

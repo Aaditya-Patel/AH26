@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, User } from 'lucide-react';
+import { Send, Sparkles, User, Mic, MicOff, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+import { voiceAPI } from '@/api/client';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -20,7 +22,38 @@ interface ChatBoxProps {
 
 export default function ChatBox({ messages, onSendMessage, isLoading }: ChatBoxProps) {
   const [input, setInput] = useState('');
+  const [isTTSPlaying, setIsTTSPlaying] = useState<number | null>(null);
+  const [ttsError, setTtsError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Voice recording hook
+  const {
+    isRecording,
+    isProcessing: isSTTProcessing,
+    error: voiceError,
+    startRecording,
+    stopRecording,
+    cancelRecording,
+  } = useVoiceRecorder({
+    onTranscript: async (audioFile: File) => {
+      try {
+        setTtsError(null);
+        const result = await voiceAPI.speechToText(audioFile);
+        if (result.text && result.text.trim()) {
+          setInput(result.text);
+          // Optionally auto-send the transcribed text
+          // onSendMessage(result.text);
+        }
+      } catch (error: any) {
+        setTtsError(error.message || 'Failed to transcribe audio');
+        console.error('STT error:', error);
+      }
+    },
+    onError: (error) => {
+      setTtsError(error.message);
+    },
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -37,6 +70,73 @@ export default function ChatBox({ messages, onSendMessage, isLoading }: ChatBoxP
       setInput('');
     }
   };
+
+  const handleVoiceRecord = async () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      setTtsError(null);
+      await startRecording();
+    }
+  };
+
+  const handlePlayTTS = async (messageIndex: number, text: string) => {
+    try {
+      // Stop any currently playing audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+
+      setTtsError(null);
+      setIsTTSPlaying(messageIndex);
+
+      // Generate audio
+      const audioBlob = await voiceAPI.textToSpeech(text);
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // Play audio
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setIsTTSPlaying(null);
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        setIsTTSPlaying(null);
+        setTtsError('Failed to play audio');
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+      };
+
+      await audio.play();
+    } catch (error: any) {
+      setIsTTSPlaying(null);
+      setTtsError(error.message || 'Failed to generate or play audio');
+      console.error('TTS error:', error);
+    }
+  };
+
+  const handleStopTTS = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsTTSPlaying(null);
+  };
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -82,7 +182,35 @@ export default function ChatBox({ messages, onSendMessage, isLoading }: ChatBoxP
                   </div>
                 )}
 
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap flex-1">{message.content}</p>
+                  
+                  {/* TTS Play Button for Assistant Messages */}
+                  {message.role === 'assistant' && message.content && (
+                    <button
+                      onClick={() => {
+                        if (isTTSPlaying === index) {
+                          handleStopTTS();
+                        } else {
+                          handlePlayTTS(index, message.content);
+                        }
+                      }}
+                      className={cn(
+                        "p-1.5 rounded-lg transition-colors flex-shrink-0",
+                        isTTSPlaying === index
+                          ? "bg-swachh-green-500/20 text-swachh-green-500"
+                          : "hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                      )}
+                      title={isTTSPlaying === index ? "Stop audio" : "Play audio"}
+                    >
+                      {isTTSPlaying === index ? (
+                        <VolumeX className="w-4 h-4" />
+                      ) : (
+                        <Volume2 className="w-4 h-4" />
+                      )}
+                    </button>
+                  )}
+                </div>
                 
                 {/* Sources */}
                 {message.sources && message.sources.length > 0 && (
@@ -141,25 +269,72 @@ export default function ChatBox({ messages, onSendMessage, isLoading }: ChatBoxP
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Error Messages */}
+      {(ttsError || voiceError) && (
+        <div className="px-4 py-2 bg-red-500/10 border-t border-red-500/20">
+          <p className="text-xs text-red-500">
+            {ttsError || voiceError}
+          </p>
+        </div>
+      )}
+
       {/* Input */}
       <form onSubmit={handleSubmit} className="p-4 border-t border-border/50">
-        <div className="flex space-x-3">
+        <div className="flex space-x-2">
+          {/* Voice Record Button */}
+          <Button
+            type="button"
+            variant={isRecording ? "destructive" : "outline"}
+            size="icon"
+            onClick={handleVoiceRecord}
+            disabled={isLoading || isSTTProcessing}
+            className={cn(
+              "flex-shrink-0",
+              isRecording && "animate-pulse"
+            )}
+            title={isRecording ? "Stop recording" : "Start voice recording"}
+          >
+            {isSTTProcessing ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : isRecording ? (
+              <MicOff className="w-5 h-5" />
+            ) : (
+              <Mic className="w-5 h-5" />
+            )}
+          </Button>
+
           <Input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask a question..."
-            disabled={isLoading}
+            placeholder={isRecording ? "Recording... (click mic to stop)" : "Ask a question or use voice..."}
+            disabled={isLoading || isRecording || isSTTProcessing}
             className="flex-1"
           />
           <Button
             type="submit"
             variant="gradient"
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || !input.trim() || isRecording || isSTTProcessing}
           >
             <Send className="w-5 h-5" />
           </Button>
         </div>
+        
+        {/* Recording Indicator */}
+        {isRecording && (
+          <div className="mt-2 flex items-center space-x-2 text-xs text-muted-foreground">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <span>Recording... Click the microphone to stop</span>
+          </div>
+        )}
+        
+        {/* Processing Indicator */}
+        {isSTTProcessing && (
+          <div className="mt-2 flex items-center space-x-2 text-xs text-muted-foreground">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            <span>Processing audio...</span>
+          </div>
+        )}
       </form>
     </div>
   );
