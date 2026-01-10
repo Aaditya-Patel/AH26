@@ -8,6 +8,9 @@ import Calculator from './pages/Calculator'
 import Matching from './pages/Matching'
 import Marketplace from './pages/Marketplace'
 import Formalities from './pages/Formalities'
+import Transactions from './pages/Transactions'
+import Portfolio from './pages/Portfolio'
+import Compliance from './pages/Compliance'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -62,6 +65,30 @@ function App() {
           element={
             <ProtectedRoute>
               <Formalities />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/transactions"
+          element={
+            <ProtectedRoute>
+              <Transactions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/portfolio"
+          element={
+            <ProtectedRoute>
+              <Portfolio />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/compliance"
+          element={
+            <ProtectedRoute>
+              <Compliance />
             </ProtectedRoute>
           }
         />
