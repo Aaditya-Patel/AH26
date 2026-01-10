@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { calculatorAPI } from '../api/client';
 import { CalculationResult } from '../types';
 import { QUESTIONNAIRES } from '../data/questionnaires';
+import { useToast } from '../context/ToastContext';
 
 export default function Calculator() {
   const [step, setStep] = useState(1);
