@@ -1,6 +1,7 @@
 # Comprehensive Research Report: Carbon Credits in India
 ## Marketplace Creation, Regulations, and Policies
 
+
 ---
 
 ## Executive Summary
