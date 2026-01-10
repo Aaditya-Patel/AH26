@@ -14,7 +14,7 @@
 
 ### Step 1: Navigate to Project Directory
 ```bash
-cd c:\Users\Aditya\Desktop\AH26\carbon-credit-marketplace
+cd carbon-credit-marketplace
 ```
 
 ### Step 2: Generate SECRET_KEY

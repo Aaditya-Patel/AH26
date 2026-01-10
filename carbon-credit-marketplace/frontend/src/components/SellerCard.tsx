@@ -1,13 +1,23 @@
 import { SellerMatch } from '../types';
+import { motion } from 'framer-motion';
+import { cardHover } from '../utils/animations';
+import AnimatedButton from './AnimatedButton';
 
 interface SellerCardProps {
   seller: SellerMatch;
   onContact?: () => void;
+  index?: number;
 }
 
-export default function SellerCard({ seller, onContact }: SellerCardProps) {
+export default function SellerCard({ seller, onContact, index = 0 }: SellerCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <motion.div
+      className="bg-white rounded-lg shadow p-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.1 }}
+      whileHover={cardHover}
+    >
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-xl font-semibold">{seller.seller_name}</h3>
@@ -55,13 +65,13 @@ export default function SellerCard({ seller, onContact }: SellerCardProps) {
       )}
 
       {onContact && (
-        <button
+        <AnimatedButton
           onClick={onContact}
-          className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
+          className="w-full"
         >
           Contact Seller
-        </button>
+        </AnimatedButton>
       )}
-    </div>
+    </motion.div>
   );
 }
