@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Layout from '../components/Layout';
 import ChatBox from '../components/ChatBox';
 import { educationAPI } from '../api/client';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -17,6 +18,7 @@ export default function Education() {
     },
   ]);
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
 
   const handleSendMessage = async (message: string) => {
     // Add user message
@@ -31,14 +33,16 @@ export default function Education() {
         ...prev,
         { role: 'assistant', content: answer, sources },
       ]);
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || 'Sorry, I encountered an error. Please try again.';
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.',
+          content: errorMessage,
         },
       ]);
+      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
     }

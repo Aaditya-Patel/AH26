@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { formalitiesAPI } from '../api/client';
 import { WorkflowStep } from '../types';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { useToast } from '../context/ToastContext';
 
 export default function Formalities() {
   const [workflowType, setWorkflowType] = useState<string>('buyer_registration');
   const [steps, setSteps] = useState<WorkflowStep[]>([]);
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadWorkflow();
@@ -16,9 +19,9 @@ export default function Formalities() {
     setLoading(true);
     try {
       const response = await formalitiesAPI.getSteps(workflowType);
-      setSteps(response.data.steps);
-    } catch (error) {
-      console.error('Failed to load workflow:', error);
+      setSteps(response.data.steps || []);
+    } catch (error: any) {
+      showToast(error.response?.data?.detail || 'Failed to load workflow. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -59,7 +62,9 @@ export default function Formalities() {
 
         {/* Steps */}
         {loading ? (
-          <div className="text-center py-12">Loading...</div>
+          <div className="text-center py-12">
+            <LoadingSpinner size="lg" />
+          </div>
         ) : (
           <div className="space-y-6">
             {steps.map((step) => (
