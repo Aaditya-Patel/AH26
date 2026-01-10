@@ -1,10 +1,5 @@
 """
 OpenAI LLM client wrapper
-
-TODO: Developer 2 will implement:
-- OpenAI client initialization
-- get_embedding() function
-- get_completion() function with system prompts
 """
 
 from openai import AsyncOpenAI
@@ -17,12 +12,29 @@ client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 async def get_embedding(text: str) -> list[float]:
-    """Get embedding for text"""
-    # TODO: Implement by Developer 2
-    pass
+    """Get embedding for text using text-embedding-3-small"""
+    try:
+        response = await client.embeddings.create(
+            model="text-embedding-3-small",
+            input=text
+        )
+        return response.data[0].embedding
+    except Exception as e:
+        raise Exception(f"Error generating embedding: {str(e)}")
 
 
 async def get_completion(prompt: str, system_prompt: str = None) -> str:
     """Get completion from GPT-4o-mini"""
-    # TODO: Implement by Developer 2
-    pass
+    try:
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        raise Exception(f"Error getting completion: {str(e)}")

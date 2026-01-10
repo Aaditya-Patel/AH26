@@ -2,10 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.database import init_db
+from app.database import init_db, AsyncSessionLocal
 from app.config import get_settings
-# from app.data.seed_data import seed_database
-# from app.agents.qdrant_client import init_qdrant, ingest_documents
+from app.data.seed_data import seed_database
+from app.agents.qdrant_client import init_qdrant, ingest_documents
 
 settings = get_settings()
 
@@ -20,14 +20,19 @@ async def lifespan(app: FastAPI):
     await init_db()
     print("✅ Database initialized")
     
-    # TODO: Initialize Qdrant and ingest documents
-    # await init_qdrant()
-    # await ingest_documents()
-    # print("✅ Qdrant initialized and documents ingested")
+    # Seed database with mock data
+    async with AsyncSessionLocal() as db:
+        await seed_database(db)
+    print("✅ Database seeded with mock data")
     
-    # TODO: Seed database with mock data
-    # await seed_database()
-    # print("✅ Database seeded with mock data")
+    # Initialize Qdrant and ingest documents
+    try:
+        await init_qdrant()
+        await ingest_documents()
+        print("✅ Qdrant initialized and documents ingested")
+    except Exception as e:
+        print(f"⚠️  Qdrant initialization failed: {str(e)}")
+        print("⚠️  Education agent may not work without Qdrant")
     
     yield
     

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.schemas.schemas import ChatRequest, ChatResponse
-# from app.agents.education_agent import chat_with_education_agent
+from app.agents.education_agent import chat_with_education_agent
 
 router = APIRouter()
 
@@ -10,15 +10,14 @@ async def chat(request: ChatRequest):
     """
     Chat with the education agent about carbon credits
     
-    TODO: Implement education agent logic
-    - Developer 2 will implement RAG-based Q&A
-    - Uses Qdrant for document retrieval
+    Uses RAG (Retrieval-Augmented Generation) to answer questions:
+    - Searches Qdrant for relevant document chunks
     - Uses OpenAI GPT-4o-mini for response generation
+    - Returns answer with source citations
     """
     
-    # Placeholder response
-    # Real implementation by Developer 2
+    result = await chat_with_education_agent(request.question)
     return ChatResponse(
-        answer="This is a placeholder response. Developer 2 will implement the RAG-based education agent.",
-        sources=["Carbon Credits Research Report - Section 1"]
+        answer=result["answer"],
+        sources=result["sources"]
     )
