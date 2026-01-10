@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     
+    # CORS
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

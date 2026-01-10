@@ -1,4 +1,5 @@
 # region agent log - Hypothesis A: Import errors
+import os
 import sys
 import traceback
 try:
@@ -113,13 +114,129 @@ app = FastAPI(
 )
 
 # Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Parse allowed origins from environment variable
+# Use environment variable first, then fall back to settings
+origins_str = os.getenv("ALLOWED_ORIGINS", settings.ALLOWED_ORIGINS)
+
+# Handle empty or whitespace-only origins
+if not origins_str or not origins_str.strip():
+    origins_str = settings.ALLOWED_ORIGINS
+
+origins_str = origins_str.strip()
+
+def expand_origin_variations(origin: str):
+    """Expand a single origin to include common variations (with/without port, http/https)"""
+    variations = [origin]  # Always include the original
+    
+    try:
+        # If origin has a port (and not default ports), add version without port
+        if "://" in origin and ":" in origin:
+            protocol, rest = origin.split("://", 1)
+            if ":" in rest:
+                base, port = rest.rsplit(":", 1)
+                if port.isdigit() and port not in ["80", "443"]:
+                    # Add without port (implicit port 80 for http, 443 for https)
+                    if protocol == "http":
+                        variations.append(f"{protocol}://{base}")  # Implicit port 80
+                        variations.append(f"{protocol}://{base}:80")  # Explicit port 80
+                    elif protocol == "https":
+                        variations.append(f"{protocol}://{base}")  # Implicit port 443
+                        variations.append(f"{protocol}://{base}:443")  # Explicit port 443
+                else:
+                    # No port specified or non-numeric, add explicit ports
+                    if protocol == "http":
+                        variations.append(f"{protocol}://{rest}:80")
+                    elif protocol == "https":
+                        variations.append(f"{protocol}://{rest}:443")
+        else:
+            # No port in URL, might need to add with common ports
+            if origin.startswith("http://") and ":80" not in origin:
+                variations.append(f"{origin}:80")
+            elif origin.startswith("https://") and ":443" not in origin:
+                variations.append(f"{origin}:443")
+        
+        # Add HTTPS variant if HTTP (for production flexibility)
+        if origin.startswith("http://"):
+            https_version = origin.replace("http://", "https://")
+            if https_version not in variations:
+                variations.append(https_version)
+    except Exception as e:
+        print(f"⚠️  Warning: Error expanding origin variations for '{origin}': {e}", flush=True)
+    
+    return variations
+
+if origins_str == "*":
+    # If wildcard is specified, we cannot use credentials
+    # Use a more permissive configuration without credentials
+    print("⚠️  WARNING: Using CORS wildcard (*) with allow_credentials=False", flush=True)
+    print("⚠️  This means cookies/credentials will NOT work. Consider specifying exact origins.", flush=True)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,  # Cannot use credentials with wildcard (CORS spec)
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+        max_age=3600,  # Cache preflight for 1 hour
+    )
+else:
+    # Parse comma-separated origins
+    base_origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]
+    
+    # Expand each origin to include common variations (with/without port, http/https)
+    origins = []
+    for origin in base_origins:
+        origins.append(origin)  # Always include original
+        origins.extend(expand_origin_variations(origin))
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    origins_unique = []
+    for origin in origins:
+        if origin not in seen:
+            seen.add(origin)
+            origins_unique.append(origin)
+    origins = origins_unique
+    
+    # Add common localhost ports for development (if not already present)
+    if settings.ENVIRONMENT == "development":
+        localhost_origins = [
+            "http://localhost:3000",
+            "http://localhost:5173", 
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+            "http://localhost",
+            "http://127.0.0.1"
+        ]
+        for origin in localhost_origins:
+            if origin not in origins:
+                origins.append(origin)
+    
+    # Ensure we have at least one origin
+    if not origins:
+        print("⚠️  WARNING: No CORS origins configured. Using wildcard without credentials.", flush=True)
+        origins = ["*"]
+        allow_credentials = False
+    else:
+        allow_credentials = True
+    
+    print(f"✅ CORS configured with {len(origins)} origin(s):", flush=True)
+    # Print first 10 origins for readability
+    for origin in origins[:10]:
+        print(f"   - {origin}", flush=True)
+    if len(origins) > 10:
+        print(f"   ... and {len(origins) - 10} more origins", flush=True)
+    print(f"✅ CORS allow_credentials: {allow_credentials}", flush=True)
+    
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=allow_credentials,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+        max_age=3600,  # Cache preflight for 1 hour
+    )
 
 
 # Root endpoint
