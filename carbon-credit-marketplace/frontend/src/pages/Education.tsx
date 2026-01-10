@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import ChatBox from '../components/ChatBox';
 import { educationAPI } from '../api/client';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useToast } from '../context/ToastContext';
 
 interface Message {
   role: 'user' | 'assistant';
