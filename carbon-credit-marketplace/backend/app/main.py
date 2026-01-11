@@ -40,6 +40,13 @@ except Exception as e:
     raise
 
 try:
+    from app.agents.formalities_qdrant import init_formalities_collection, ingest_formalities_documents
+except Exception as e:
+    print(f"ERROR importing formalities_qdrant: {e}", file=sys.stderr)
+    traceback.print_exc()
+    raise
+
+try:
     settings = get_settings()
 except Exception as e:
     print(f"ERROR getting settings: {e}", file=sys.stderr)
@@ -98,6 +105,15 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️  Qdrant initialization failed: {str(e)}")
         print("⚠️  Education agent may not work without Qdrant")
+    
+    # Initialize formalities Qdrant collection and ingest documents
+    try:
+        await init_formalities_collection()
+        await ingest_formalities_documents()
+        print("✅ Formalities Qdrant initialized and documents ingested")
+    except Exception as e:
+        print(f"⚠️  Formalities Qdrant initialization failed: {str(e)}")
+        print("⚠️  Formalities agent may not work without Qdrant")
     
     yield
     

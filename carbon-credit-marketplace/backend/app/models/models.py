@@ -93,6 +93,8 @@ class User(Base):
     gstin = Column(String(20))  # GST Number
     is_active = Column(Boolean, default=True)
     is_kyc_verified = Column(Boolean, default=False)
+    risk_score = Column(Float, default=0.0)  # 0-100 fraud risk score
+    verification_tier = Column(String(50), default='basic')  # 'basic', 'verified', 'premium'
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
@@ -395,6 +397,11 @@ class Verification(Base):
     certificate_number = Column(String(100))
     certificate_url = Column(String(500))
     
+    # AI Validation fields
+    auto_validated = Column(Boolean, default=False)
+    validation_score = Column(Float)  # 0-100 confidence score
+    fraud_indicators = Column(JSON)  # Store detected fraud indicators
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
@@ -421,6 +428,9 @@ class Document(Base):
     version = Column(Integer, default=1)
     is_current = Column(Boolean, default=True)
     expires_at = Column(DateTime(timezone=True))
+    
+    # OCR extracted data
+    extracted_data = Column(JSON)  # Store OCR results
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     

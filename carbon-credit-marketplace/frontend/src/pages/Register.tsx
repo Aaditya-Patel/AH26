@@ -2,7 +2,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Leaf, Mail, Lock, Building2, ArrowRight, AlertCircle, User, Factory } from 'lucide-react';
+import { Leaf, Mail, Lock, Building2, ArrowRight, AlertCircle, User, Factory, FileText } from 'lucide-react';
 import { authAPI } from '../api/client';
 import { useAuthStore } from '../store/store';
 import { useToast } from '../context/ToastContext';
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { GlassCard } from '@/components/GlassCard';
 import { GradientText } from '@/components/GradientText';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import DocumentUpload from '@/components/DocumentUpload';
 import { cn } from '@/lib/utils';
 
 const sectors = [
@@ -34,6 +35,7 @@ export default function Register() {
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
     setError: setFormError,
   } = useForm<RegisterFormData>({
@@ -44,10 +46,32 @@ export default function Register() {
       password: '',
       company_name: '',
       sector: '',
+      pan_number: '',
+      gstin: '',
+      gci_registration_id: '',
     },
   });
 
   const userType = watch('user_type');
+
+  const handleDocumentExtracted = (documentType: string, extractedData: any) => {
+    // Auto-fill form fields from extracted data
+    if (extractedData) {
+      if (documentType === 'pan_card') {
+        if (extractedData.pan_number) {
+          setValue('pan_number', extractedData.pan_number.toUpperCase());
+        }
+      } else if (documentType === 'gstin') {
+        if (extractedData.gstin) {
+          setValue('gstin', extractedData.gstin.toUpperCase());
+        }
+      } else if (documentType === 'gci_certificate') {
+        if (extractedData.registration_id) {
+          setValue('gci_registration_id', extractedData.registration_id);
+        }
+      }
+    }
+  };
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
@@ -322,6 +346,108 @@ export default function Register() {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Document Upload Section */}
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="space-y-4 pt-4 border-t border-border"
+            >
+              <div className="flex items-center space-x-2">
+                <FileText className="w-5 h-5 text-swachh-green-500" />
+                <h3 className="font-medium">Verification Documents</h3>
+                <span className="text-xs text-muted-foreground">(Optional - can be added later)</span>
+              </div>
+
+              {/* PAN Card Upload */}
+              <DocumentUpload
+                documentType="pan_card"
+                label="PAN Card"
+                required={false}
+                onExtractedData={(data) => handleDocumentExtracted('pan_card', data)}
+              />
+
+              {/* GSTIN Upload */}
+              <DocumentUpload
+                documentType="gstin"
+                label="GSTIN Certificate"
+                required={false}
+                onExtractedData={(data) => handleDocumentExtracted('gstin', data)}
+              />
+
+              {/* GCI Certificate (Seller only) */}
+              <AnimatePresence>
+                {userType === 'seller' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    <DocumentUpload
+                      documentType="gci_certificate"
+                      label="GCI Registry Certificate"
+                      required={false}
+                      onExtractedData={(data) => handleDocumentExtracted('gci_certificate', data)}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Manual Input Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div className="space-y-2">
+                  <Label htmlFor="pan_number" className="text-sm font-medium">
+                    PAN Number
+                  </Label>
+                  <Input
+                    {...register('pan_number')}
+                    id="pan_number"
+                    type="text"
+                    placeholder="ABCDE1234F"
+                    className={cn(
+                      errors.pan_number && "border-destructive focus:border-destructive"
+                    )}
+                    onChange={(e) => setValue('pan_number', e.target.value.toUpperCase())}
+                  />
+                  {errors.pan_number && (
+                    <p className="text-sm text-destructive">{errors.pan_number.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gstin" className="text-sm font-medium">
+                    GSTIN
+                  </Label>
+                  <Input
+                    {...register('gstin')}
+                    id="gstin"
+                    type="text"
+                    placeholder="29ABCDE1234F1Z5"
+                    className={cn(
+                      errors.gstin && "border-destructive focus:border-destructive"
+                    )}
+                    onChange={(e) => setValue('gstin', e.target.value.toUpperCase())}
+                  />
+                  {errors.gstin && (
+                    <p className="text-sm text-destructive">{errors.gstin.message}</p>
+                  )}
+                </div>
+
+                {userType === 'seller' && (
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="gci_registration_id" className="text-sm font-medium">
+                      GCI Registration ID
+                    </Label>
+                    <Input
+                      {...register('gci_registration_id')}
+                      id="gci_registration_id"
+                      type="text"
+                      placeholder="GCI Registration ID"
+                    />
+                  </div>
+                )}
+              </div>
+            </motion.div>
 
             {/* Submit Button */}
             <Button

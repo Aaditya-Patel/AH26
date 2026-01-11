@@ -131,6 +131,61 @@ export const educationAPI = {
 export const calculatorAPI = {
   calculate: (sector: string, answers: any) => 
     apiClient.post('/api/calculator/calculate', { sector, answers }),
+  chatStream: async function* (question: string, conversationState?: any) {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const token = localStorage.getItem('token');
+    
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(`${API_URL}/api/calculator/chat/stream`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ question, conversation_state: conversationState }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    
+    if (!reader) {
+      throw new Error('Response body is not readable');
+    }
+    
+    let buffer = '';
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) {
+        break;
+      }
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          yield data;
+        }
+      }
+    }
+    
+    // Process remaining buffer
+    if (buffer.startsWith('data: ')) {
+      yield buffer.slice(6);
+    }
+  },
 };
 
 // Matching API
@@ -152,6 +207,75 @@ export const marketplaceAPI = {
 export const formalitiesAPI = {
   getSteps: (workflowType: string) => 
     apiClient.get(`/api/formalities/steps/${workflowType}`),
+  chat: (question: string, conversationState?: any) =>
+    apiClient.post('/api/formalities/chat', { question, conversation_state: conversationState }),
+  chatStream: async function* (question: string, conversationState?: any) {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const token = localStorage.getItem('token');
+    
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(`${API_URL}/api/formalities/chat/stream`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ question, conversation_state: conversationState }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    
+    if (!reader) {
+      throw new Error('Response body is not readable');
+    }
+    
+    let buffer = '';
+    let multilineBuffer: string[] = [];
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) {
+        break;
+      }
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          // Accumulate multiline data
+          multilineBuffer.push(line.slice(6));
+        } else if (line === '' && multilineBuffer.length > 0) {
+          // Empty line ends multiline event - join with newlines and yield
+          yield multilineBuffer.join('\n');
+          multilineBuffer = [];
+        } else if (multilineBuffer.length > 0) {
+          // Non-data line while we have buffered data - yield accumulated content
+          yield multilineBuffer.join('\n');
+          multilineBuffer = [];
+        }
+      }
+    }
+    
+    // Process remaining buffer and any buffered multiline content
+    if (buffer.startsWith('data: ')) {
+      multilineBuffer.push(buffer.slice(6));
+    }
+    if (multilineBuffer.length > 0) {
+      yield multilineBuffer.join('\n');
+    }
+  },
 };
 
 // Transactions API
@@ -259,6 +383,28 @@ export const verificationAPI = {
     }),
   getDocuments: (params?: { document_type?: string; verification_id?: string }) =>
     apiClient.get('/api/verification/documents', { params }),
+  // OCR endpoints
+  extractOCR: (file: File, documentType: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/api/verification/documents/ocr', formData, {
+      params: { document_type: documentType },
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  // Verification assistant endpoints
+  assistantChat: (question: string) =>
+    apiClient.post('/api/verification/assistant/chat', { question }),
+  getChecklist: (userType: 'buyer' | 'seller') =>
+    apiClient.get('/api/verification/assistant/checklist', { params: { user_type: userType } }),
+  validateDocuments: () =>
+    apiClient.post('/api/verification/assistant/validate'),
+  // Document validation endpoint
+  validateDocumentsFull: () =>
+    apiClient.post('/api/verification/documents/validate'),
+  // Credit verification endpoint
+  verifyCredits: () =>
+    apiClient.post('/api/verification/credits/verify'),
 };
 
 // Compliance API

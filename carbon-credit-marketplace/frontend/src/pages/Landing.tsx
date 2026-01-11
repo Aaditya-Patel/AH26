@@ -17,7 +17,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/GlassCard';
 import { GradientText } from '@/components/GradientText';
-import { HeroCodeBlock } from '@/components/CodeBlock';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { staggerContainer, staggerItem } from '../utils/animations';
 
@@ -113,12 +112,13 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="max-w-4xl mx-auto">
             {/* Hero Content */}
             <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: 'easeOut' }}
+              className="text-center"
             >
               <motion.div 
                 className="inline-flex items-center space-x-2 glass px-4 py-2 rounded-full mb-6"
@@ -138,12 +138,12 @@ export default function Landing() {
                 </GradientText>
               </h1>
               
-              <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-lg leading-relaxed">
+              <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
                 AI-powered platform for carbon credit trading with intelligent agents
                 to guide you through emissions calculation, seller matching, and compliance.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link to="/register">
                   <Button size="xl" variant="glow" className="w-full sm:w-auto">
                     Start Trading
@@ -173,16 +173,6 @@ export default function Landing() {
                   </div>
                 ))}
               </motion.div>
-            </motion.div>
-
-            {/* Hero Code Block */}
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
-              className="hidden lg:block"
-            >
-              <HeroCodeBlock />
             </motion.div>
           </div>
         </div>

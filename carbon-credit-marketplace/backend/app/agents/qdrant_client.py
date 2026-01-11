@@ -17,15 +17,21 @@ client = QdrantClient(url=settings.QDRANT_URL)
 async def init_qdrant():
     """Initialize Qdrant collection"""
     try:
-        # Recreate collection (will delete existing if present)
-        client.recreate_collection(
-            collection_name=settings.QDRANT_COLLECTION_NAME,
-            vectors_config=VectorParams(
-                size=1536,  # text-embedding-3-small dimension
-                distance=Distance.COSINE
+        # Check if collection exists, if not create it
+        collections = client.get_collections().collections
+        collection_names = [c.name for c in collections]
+        
+        if settings.QDRANT_COLLECTION_NAME not in collection_names:
+            client.create_collection(
+                collection_name=settings.QDRANT_COLLECTION_NAME,
+                vectors_config=VectorParams(
+                    size=1536,  # text-embedding-3-small dimension
+                    distance=Distance.COSINE
+                )
             )
-        )
-        print(f"✅ Qdrant collection '{settings.QDRANT_COLLECTION_NAME}' initialized")
+            print(f"✅ Qdrant collection '{settings.QDRANT_COLLECTION_NAME}' created")
+        else:
+            print(f"✅ Qdrant collection '{settings.QDRANT_COLLECTION_NAME}' already exists")
     except Exception as e:
         print(f"⚠️  Error initializing Qdrant: {str(e)}")
         raise

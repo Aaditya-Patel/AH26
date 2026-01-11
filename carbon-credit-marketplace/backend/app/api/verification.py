@@ -15,7 +15,19 @@ from app.models.models import (
 )
 from app.schemas.schemas import (
     VerificationCreate, VerificationResponse, VerificationUpdate,
-    DocumentUpload, DocumentResponse
+    DocumentUpload, DocumentResponse, OCRResponse, ChatRequest, ChatResponse
+)
+from app.services.document_ocr import extract_text_and_structured_data
+from app.services.document_validator import (
+    validate_pan_number, validate_gstin, validate_gci_registration_id,
+    validate_document_consistency, validate_document_format
+)
+from app.services.fraud_detector import (
+    check_duplicate_registration, detect_fraud_indicators, analyze_risk_score
+)
+from app.services.credit_verifier import check_credit_availability, validate_credit_listing
+from app.agents.verification_agent import (
+    chat_with_verification_agent, get_verification_checklist, validate_documents_completeness
 )
 from app.core.security import get_current_user_id
 
@@ -371,6 +383,54 @@ async def get_my_documents(
         )
         for doc in documents
     ]
+
+
+# ==================== OCR ENDPOINTS ====================
+
+@router.post("/documents/ocr", response_model=OCRResponse)
+async def extract_document_text(
+    file: UploadFile = File(...),
+    document_type: str = Query(..., description="Type of document: pan_card, gstin, company_registration, gci_certificate, bee_certificate"),
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
+):
+    """Extract text and structured data from uploaded document using OCR"""
+    
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith('image/'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only image files are supported for OCR"
+        )
+    
+    # Read file content
+    file_contents = await file.read()
+    
+    # Validate file size (max 10MB)
+    if len(file_contents) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File size exceeds 10MB limit"
+        )
+    
+    try:
+        # Extract text and structured data
+        result = await extract_text_and_structured_data(
+            image_bytes=file_contents,
+            document_type=document_type,
+            mime_type=file.content_type
+        )
+        
+        return OCRResponse(
+            raw_text=result["raw_text"],
+            extracted_data=result["extracted_data"],
+            confidence=result["confidence"]
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing document: {str(e)}"
+        )
 
 
 # ==================== LISTING VERIFICATION ENDPOINTS ====================

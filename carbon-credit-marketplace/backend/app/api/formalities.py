@@ -1,5 +1,14 @@
 from fastapi import APIRouter, Path
-from app.schemas.schemas import WorkflowResponse, WorkflowStep
+from fastapi.responses import StreamingResponse
+from app.schemas.schemas import (
+    WorkflowResponse, WorkflowStep,
+    FormalitiesChatRequest, FormalitiesChatResponse, ConversationState
+)
+from app.agents.formalities_agent import (
+    chat_with_formalities_agent, chat_with_formalities_agent_stream,
+    get_initial_state
+)
+import json
 
 router = APIRouter()
 
@@ -126,3 +135,61 @@ async def get_workflow_steps(
         workflow_type=workflow_type,
         steps=workflows.get(workflow_type, [])
     )
+
+
+# ==================== FORMALITIES CHAT ENDPOINTS ====================
+
+@router.post("/chat", response_model=FormalitiesChatResponse)
+async def chat_formalities(request: FormalitiesChatRequest):
+    """
+    Chat with formalities agent (non-streaming)
+    
+    Uses conversation state to guide users through workflows step-by-step.
+    """
+    conversation_state = None
+    if request.conversation_state:
+        conversation_state = request.conversation_state.model_dump()
+    
+    result = await chat_with_formalities_agent(request.question, conversation_state)
+    
+    return FormalitiesChatResponse(
+        answer=result["answer"],
+        conversation_state=ConversationState(**result["conversation_state"])
+    )
+
+
+@router.post("/chat/stream")
+async def chat_formalities_stream(request: FormalitiesChatRequest):
+    """
+    Chat with formalities agent using streaming responses
+    
+    Uses Server-Sent Events (SSE) to stream responses in real-time.
+    Returns conversation state updates as final event.
+    """
+    conversation_state = None
+    if request.conversation_state:
+        conversation_state = request.conversation_state.model_dump()
+    
+    async def generate():
+        try:
+            async for chunk in chat_with_formalities_agent_stream(request.question, conversation_state):
+                # Check if it's a JSON string (state update) or text chunk
+                if chunk.startswith("{") and '"type"' in chunk:
+                    # State update event
+                    yield f"data: {chunk}\n\n"
+                else:
+                    # Text chunk - for multiline content, prefix each line with "data: "
+                    if "\n" in chunk:
+                        # Split by newlines and prefix each line
+                        lines = chunk.split("\n")
+                        for line in lines:
+                            yield f"data: {line}\n"
+                        yield "\n"  # Empty line to end the event
+                    else:
+                        # Single line - normal format
+                        yield f"data: {chunk}\n\n"
+        except Exception as e:
+            error_data = json.dumps({"type": "error", "message": str(e)})
+            yield f"data: {error_data}\n\n"
+    
+    return StreamingResponse(generate(), media_type="text/event-stream")

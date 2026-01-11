@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # Qdrant
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_COLLECTION_NAME: str = "carbon_credits_kb"
+    QDRANT_FORMALITIES_COLLECTION_NAME: str = "formalities_kb"
     
     # OpenAI
     OPENAI_API_KEY: str = ""

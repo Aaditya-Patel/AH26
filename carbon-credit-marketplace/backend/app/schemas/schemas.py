@@ -65,6 +65,7 @@ class UserRegister(BaseModel):
     sector: Optional[str] = None
     pan_number: Optional[str] = None
     gstin: Optional[str] = None
+    gci_registration_id: Optional[str] = None  # For sellers
 
 
 class UserLogin(BaseModel):
@@ -204,6 +205,48 @@ class WorkflowStep(BaseModel):
 class WorkflowResponse(BaseModel):
     workflow_type: str
     steps: List[WorkflowStep]
+
+
+# ==================== FORMALITIES CHAT SCHEMAS ====================
+
+class ConversationState(BaseModel):
+    user_type: Optional[str] = None  # "buyer" or "seller"
+    current_workflow: Optional[str] = None  # "buyer_registration", "seller_registration", "mrv_compliance"
+    current_step: Optional[int] = None
+    completed_steps: List[int] = []
+    conversation_history: List[Dict[str, Any]] = []
+    context: Dict[str, Any] = {}
+
+
+class FormalitiesChatRequest(BaseModel):
+    question: str
+    conversation_state: Optional[ConversationState] = None
+
+
+class FormalitiesChatResponse(BaseModel):
+    answer: str
+    conversation_state: ConversationState
+
+
+# ==================== CALCULATOR CHAT SCHEMAS ====================
+
+class CalculatorChatState(BaseModel):
+    sector: Optional[str] = None
+    answers: Dict[str, Any] = {}
+    current_question_index: int = 0
+    conversation_history: List[Dict[str, Any]] = []
+    status: str = "asking_questions"  # "asking_questions" or "calculation_complete"
+    calculation_result: Optional[Dict[str, Any]] = None
+
+
+class CalculatorChatRequest(BaseModel):
+    question: str
+    conversation_state: Optional[CalculatorChatState] = None
+
+
+class CalculatorChatResponse(BaseModel):
+    answer: str
+    conversation_state: CalculatorChatState
 
 
 # ==================== ORDER SCHEMAS ====================
@@ -458,6 +501,14 @@ class DocumentResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+# ==================== OCR SCHEMAS ====================
+
+class OCRResponse(BaseModel):
+    raw_text: str
+    extracted_data: Dict[str, Any]
+    confidence: float = 0.9
 
 
 # ==================== COMPLIANCE SCHEMAS ====================

@@ -18,6 +18,8 @@ import { GlassCard } from '@/components/GlassCard';
 import { GradientText } from '@/components/GradientText';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import FormalitiesChat from '../components/FormalitiesChat';
 import { cn } from '@/lib/utils';
 import { useToast } from '../context/ToastContext';
 import { staggerContainer, staggerItem } from '../utils/animations';
@@ -77,7 +79,7 @@ export default function Formalities() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <motion.div
           className="mb-8"
@@ -97,7 +99,16 @@ export default function Formalities() {
           </div>
         </motion.div>
 
-        {/* Workflow Selector */}
+        {/* Tabs */}
+        <Tabs defaultValue="workflow" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+            <TabsTrigger value="workflow">Workflow Guide</TabsTrigger>
+            <TabsTrigger value="assistant">Interactive Assistant</TabsTrigger>
+          </TabsList>
+
+          {/* Workflow Guide Tab */}
+          <TabsContent value="workflow" className="space-y-6">
+            {/* Workflow Selector */}
         <GlassCard className="p-6 mb-8" hover={false}>
           <h2 className="text-lg font-semibold font-display mb-4">Select Workflow Type</h2>
           <motion.div 
@@ -311,21 +322,30 @@ export default function Formalities() {
           </motion.div>
         )}
 
-        {/* Swachh Bharat Footer */}
-        <motion.div 
-          className="flex items-center justify-center mt-12 space-x-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          <span className="text-sm text-muted-foreground">Compliant with</span>
-          <div className="flex space-x-1">
-            <div className="w-4 h-4 rounded-full bg-swachh-saffron" />
-            <div className="w-4 h-4 rounded-full bg-white border border-border" />
-            <div className="w-4 h-4 rounded-full bg-swachh-green-500" />
-          </div>
-          <span className="text-sm text-muted-foreground">Indian Regulations</span>
-        </motion.div>
+            {/* Swachh Bharat Footer */}
+            <motion.div 
+              className="flex items-center justify-center mt-12 space-x-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              <span className="text-sm text-muted-foreground">Compliant with</span>
+              <div className="flex space-x-1">
+                <div className="w-4 h-4 rounded-full bg-swachh-saffron" />
+                <div className="w-4 h-4 rounded-full bg-white border border-border" />
+                <div className="w-4 h-4 rounded-full bg-swachh-green-500" />
+              </div>
+              <span className="text-sm text-muted-foreground">Indian Regulations</span>
+            </motion.div>
+          </TabsContent>
+
+          {/* Interactive Assistant Tab */}
+          <TabsContent value="assistant">
+            <GlassCard className="p-6 h-[700px]" hover={false}>
+              <FormalitiesChat />
+            </GlassCard>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );

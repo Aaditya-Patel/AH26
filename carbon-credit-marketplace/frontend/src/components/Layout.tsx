@@ -12,7 +12,6 @@ import {
   Calculator, 
   Users, 
   ShoppingBag, 
-  FileText, 
   LogOut,
   Leaf,
   User,
@@ -52,6 +51,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const isActive = (path: string) => location.pathname === path;
 
+  // Filter navigation items based on user role
+  const filteredNavItems = navItems.filter(item => {
+    // Calculator and Matching are buyer-specific
+    if (item.path === '/calculator' || item.path === '/matching') {
+      return user?.user_type === 'buyer';
+    }
+    // All other items are available to both buyers and sellers
+    return true;
+  });
+
   return (
     <div className="min-h-screen bg-background">
       {/* Background Pattern */}
@@ -70,7 +79,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       >
         <div className="flex items-center h-16 justify-between">
           {/* Logo - Positioned at absolute left */}
-          <Link to="/" className="flex items-center space-x-2 pl-4 sm:pl-6 lg:pl-8 flex-shrink-0">
+          <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center space-x-2 pl-4 sm:pl-6 lg:pl-8 flex-shrink-0">
               <motion.div
                 className="w-10 h-10 rounded-lg bg-gradient-to-br from-swachh-green-500 to-swachh-marigold-500 flex items-center justify-center"
                 whileHover={{ rotate: 360 }}
@@ -86,7 +95,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {/* Center Navigation Menu */}
           {isAuthenticated && (
             <div className="hidden lg:flex items-center space-x-1 flex-1 justify-center max-w-4xl mx-auto">
-              {navItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
@@ -187,7 +196,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 transition={{ duration: 0.3 }}
               >
                 <div className="flex flex-col space-y-1">
-                  {navItems.map((item, index) => (
+                  {filteredNavItems.map((item, index) => (
                     <motion.div
                       key={item.path}
                       initial={{ opacity: 0, x: -20 }}

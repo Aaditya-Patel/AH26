@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models.models import User, CreditListing
 from app.schemas.schemas import ListingCreate, ListingResponse, ListingUpdate
 from app.core.security import get_current_user_id
+from app.services.credit_verifier import validate_credit_listing
 
 router = APIRouter()
 
@@ -113,6 +114,14 @@ async def create_listing(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only sellers can create listings"
+        )
+    
+    # Verify seller has sufficient credits
+    validation = await validate_credit_listing(db, UUID(user_id), float(listing_data.quantity))
+    if not validation.get("is_valid"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=validation.get("error", "Credit verification failed")
         )
     
     # Convert co_benefits list to JSON string
