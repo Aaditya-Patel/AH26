@@ -1,125 +1,113 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Calculator as CalculatorIcon, Send, Sparkles, MessageCircle, TrendingUp, ArrowRight, Leaf, IndianRupee } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
+import { motion } from 'framer-motion';
+import { Calculator as CalculatorIcon, TrendingUp, ArrowRight, Leaf, IndianRupee, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Layout from '../components/Layout';
 import { calculatorAPI } from '../api/client';
 import { GlassCard } from '@/components/GlassCard';
 import { GradientText } from '@/components/GradientText';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import 'highlight.js/styles/atom-one-dark.css';
+import { useToast } from '../context/ToastContext';
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  calculationResult?: any;
+interface Question {
+  id: string;
+  question: string;
+  type: 'number' | 'select';
+  unit?: string;
+  options?: string[];
 }
 
+interface CalculationResult {
+  total_emissions: number;
+  scope1_emissions: number;
+  scope2_emissions: number;
+  scope3_emissions: number;
+  credits_needed: number;
+  cost_estimate: number;
+  breakdown: Array<{
+    source: string;
+    emissions: number;
+  }>;
+}
+
+const SECTORS = [
+  { value: 'aluminium', label: 'Aluminium' },
+  { value: 'chlor_alkali', label: 'Chlor-Alkali' },
+  { value: 'cement', label: 'Cement' },
+  { value: 'fertilizer', label: 'Fertilizer' },
+  { value: 'iron_steel', label: 'Iron & Steel' },
+  { value: 'pulp_paper', label: 'Pulp & Paper' },
+  { value: 'petrochemicals', label: 'Petrochemicals' },
+  { value: 'petroleum_refining', label: 'Petroleum Refining' },
+  { value: 'textiles', label: 'Textiles' },
+];
+
 export default function Calculator() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: 'Hello! I\'m your Calculator Agent. I\'ll help you calculate your carbon emissions. Let\'s start - **Which sector are you in?** (e.g., Cement, Iron & Steel, Textiles, Aluminium, Chlor-Alkali, Fertilizer, Pulp & Paper, Petrochemicals, or Petroleum Refining)',
-    },
-  ]);
-  const [input, setInput] = useState('');
+  const [selectedSector, setSelectedSector] = useState<string>('');
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
-  const [conversationState, setConversationState] = useState<any>(null);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [result, setResult] = useState<CalculationResult | null>(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
-  const handleSendMessage = async (message?: string) => {
-    const question = message || input.trim();
-    if (!question || loading) return;
-    
-    setInput('');
-    setLoading(true);
+  // Load questions when sector is selected
+  useEffect(() => {
+    if (selectedSector) {
+      loadQuestions();
+    } else {
+      setQuestions([]);
+      setAnswers({});
+      setResult(null);
+    }
+  }, [selectedSector]);
 
-    // Add user message and assistant message immediately for streaming
-    setMessages((prev) => [...prev, { role: 'user', content: question }, { role: 'assistant', content: '' }]);
-
+  const loadQuestions = async () => {
+    setLoadingQuestions(true);
     try {
-      let accumulatedContent = '';
-      
-      for await (const chunk of calculatorAPI.chatStream(question, conversationState)) {
-        // Try to parse as JSON (for state or errors)
-        try {
-          const parsed = JSON.parse(chunk);
-          
-          if (parsed.type === 'state') {
-            // Update conversation state
-            setConversationState(parsed.conversation_state);
-            
-            // Update the last message (assistant) with accumulated content
-            setMessages((prev) => {
-              const updated = [...prev];
-              const lastIndex = updated.length - 1;
-              if (updated[lastIndex] && updated[lastIndex].role === 'assistant') {
-                updated[lastIndex] = {
-                  ...updated[lastIndex],
-                  content: accumulatedContent,
-                  calculationResult: parsed.conversation_state.calculation_result,
-                };
-              }
-              return updated;
-            });
-            break;
-          } else if (parsed.type === 'error') {
-            throw new Error(parsed.message);
-          }
-        } catch {
-          // Not JSON, it's a text chunk
-          accumulatedContent += chunk;
-          
-          // Update the last message (assistant) content incrementally
-          setMessages((prev) => {
-            const updated = [...prev];
-            const lastIndex = updated.length - 1;
-            if (updated[lastIndex] && updated[lastIndex].role === 'assistant') {
-              updated[lastIndex] = {
-                ...updated[lastIndex],
-                content: accumulatedContent,
-              };
-            }
-            return updated;
-          });
-        }
-      }
+      const response = await calculatorAPI.getQuestions(selectedSector);
+      setQuestions(response.data.questions || []);
+      setAnswers({});
+      setResult(null);
     } catch (error: any) {
-      const errorMessage = error.message || 'Sorry, I encountered an error. Please try again.';
-      setMessages((prev) => {
-        const updated = [...prev];
-        const lastIndex = updated.length - 1;
-        if (updated[lastIndex] && updated[lastIndex].role === 'assistant') {
-          updated[lastIndex] = {
-            ...updated[lastIndex],
-            content: errorMessage,
-          };
-        }
-        return updated;
-      });
+      showToast(error.response?.data?.detail || 'Failed to load questions. Please try again.', 'error');
+    } finally {
+      setLoadingQuestions(false);
+    }
+  };
+
+  const handleAnswerChange = (questionId: string, value: any) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: value === '' ? undefined : value,
+    }));
+  };
+
+  const handleCalculate = async () => {
+    if (!selectedSector || questions.length === 0) {
+      showToast('Please select a sector first.', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await calculatorAPI.calculate(selectedSector, answers);
+      setResult(response.data);
+      showToast('Calculation completed successfully!', 'success');
+    } catch (error: any) {
+      showToast(error.response?.data?.detail || 'Failed to calculate emissions. Please check your inputs.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReset = () => {
-    setMessages([
-      {
-        role: 'assistant',
-        content: 'Hello! I\'m your Calculator Agent. I\'ll help you calculate your carbon emissions. Let\'s start - **Which sector are you in?** (e.g., Cement, Iron & Steel, Textiles, Aluminium, Chlor-Alkali, Fertilizer, Pulp & Paper, Petrochemicals, or Petroleum Refining)',
-      },
-    ]);
-    setConversationState(null);
-    setInput('');
-  };
-
-  const handleFindSellers = (result: any) => {
+  const handleFindSellers = () => {
     if (result) {
       navigate('/matching', {
         state: {
@@ -128,6 +116,17 @@ export default function Calculator() {
         },
       });
     }
+  };
+
+  const handleReset = () => {
+    setSelectedSector('');
+    setQuestions([]);
+    setAnswers({});
+    setResult(null);
+  };
+
+  const formatSectorName = (sector: string) => {
+    return SECTORS.find(s => s.value === sector)?.label || sector;
   };
 
   return (
@@ -151,200 +150,228 @@ export default function Calculator() {
             </div>
           </div>
         </motion.div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Chat Container */}
-          <div className="lg:col-span-3">
-            <GlassCard className="h-[600px] flex flex-col overflow-hidden" hover={false}>
-              {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <AnimatePresence>
-                  {messages.map((message, index) => (
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Form */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Sector Selection */}
+            <GlassCard className="p-6" hover={false}>
+              <Label htmlFor="sector" className="text-base font-semibold mb-3 block">
+                Select Your Sector
+              </Label>
+              <Select
+                value={selectedSector}
+                onValueChange={setSelectedSector}
+                disabled={loadingQuestions}
+              >
+                <SelectTrigger id="sector" variant="glass">
+                  <SelectValue placeholder="Choose your industry sector" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SECTORS.map((sector) => (
+                    <SelectItem key={sector.value} value={sector.value}>
+                      {sector.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {loadingQuestions && (
+                <p className="text-sm text-muted-foreground mt-2">Loading questions...</p>
+              )}
+            </GlassCard>
+
+            {/* Questions Form */}
+            {questions.length > 0 && (
+              <GlassCard className="p-6" hover={false}>
+                <h2 className="text-xl font-semibold font-display mb-6">
+                  Provide Your Data
+                </h2>
+                <div className="space-y-6">
+                  {questions.map((question, index) => (
                     <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      key={question.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className={cn(
-                        "flex",
-                        message.role === 'user' ? 'justify-end' : 'justify-start'
-                      )}
+                      className="space-y-2"
                     >
-                      <div
-                        className={cn(
-                          "max-w-[80%] rounded-2xl p-4",
-                          message.role === 'user'
-                            ? 'bg-gradient-to-r from-swachh-marigold-500 to-swachh-saffron text-white rounded-br-md'
-                            : 'glass rounded-bl-md'
+                      <Label htmlFor={question.id} className="text-sm font-medium">
+                        {question.question}
+                        {question.unit && (
+                          <span className="text-muted-foreground ml-2">({question.unit})</span>
                         )}
-                      >
-                        {message.role === 'assistant' && (
-                          <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-swachh-marigold-500 to-swachh-saffron flex items-center justify-center">
-                              <Sparkles className="w-3 h-3 text-white" />
-                            </div>
-                            <span className="text-xs font-medium text-swachh-marigold-500">AI Agent</span>
-                          </div>
-                        )}
-                        {message.role === 'assistant' ? (
-                          <div className="prose prose-sm dark:prose-invert max-w-none">
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              rehypePlugins={[rehypeHighlight]}
-                              components={{
-                                p: ({ children }) => <p className="text-sm leading-relaxed mb-2 last:mb-0">{children}</p>,
-                                h1: ({ children }) => <h1 className="text-xl font-bold mb-2 mt-4 first:mt-0">{children}</h1>,
-                                h2: ({ children }) => <h2 className="text-lg font-semibold mb-2 mt-3 first:mt-0">{children}</h2>,
-                                h3: ({ children }) => <h3 className="text-base font-semibold mb-2 mt-3 first:mt-0">{children}</h3>,
-                                ul: ({ children }) => <ul className="list-disc list-inside space-y-1 my-2">{children}</ul>,
-                                ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>,
-                                li: ({ children }) => <li className="text-sm">{children}</li>,
-                                code: ({ className, children, ...props }) => {
-                                  const isInline = !className;
-                                  return isInline ? (
-                                    <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
-                                      {children}
-                                    </code>
-                                  ) : (
-                                    <code className={className} {...props}>
-                                      {children}
-                                    </code>
-                                  );
-                                },
-                                pre: ({ children }) => (
-                                  <pre className="bg-muted p-4 rounded-lg overflow-x-auto my-2">
-                                    {children}
-                                  </pre>
-                                ),
-                                blockquote: ({ children }) => (
-                                  <blockquote className="border-l-4 border-swachh-marigold-500 pl-4 italic my-2 text-muted-foreground">
-                                    {children}
-                                  </blockquote>
-                                ),
-                                a: ({ href, children }) => (
-                                  <a href={href} className="text-swachh-marigold-500 hover:underline" target="_blank" rel="noopener noreferrer">
-                                    {children}
-                                  </a>
-                                ),
-                                table: ({ children }) => (
-                                  <div className="overflow-x-auto my-2">
-                                    <table className="min-w-full border-collapse border border-border">
-                                      {children}
-                                    </table>
-                                  </div>
-                                ),
-                                th: ({ children }) => (
-                                  <th className="border border-border p-2 bg-muted font-semibold text-left">
-                                    {children}
-                                  </th>
-                                ),
-                                td: ({ children }) => (
-                                  <td className="border border-border p-2">
-                                    {children}
-                                  </td>
-                                ),
-                                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                                em: ({ children }) => <em className="italic">{children}</em>,
-                              }}
-                            >
-                              {message.content}
-                            </ReactMarkdown>
-                            
-                            {/* Action Buttons for Calculation Results */}
-                            {message.calculationResult && (
-                              <div className="mt-4 pt-4 border-t border-border/50 flex flex-col sm:flex-row gap-3">
-                                <Button
-                                  onClick={() => handleFindSellers(message.calculationResult)}
-                                  variant="gradient"
-                                  size="sm"
-                                  className="flex-1"
-                                >
-                                  Find Matched Sellers
-                                  <ArrowRight className="ml-2 w-4 h-4" />
-                                </Button>
-                                <Button
-                                  onClick={handleReset}
-                                  variant="outline"
-                                  size="sm"
-                                  className="flex-1"
-                                >
-                                  New Calculation
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                        )}
-                      </div>
+                      </Label>
+                      {question.type === 'number' ? (
+                        <Input
+                          id={question.id}
+                          type="number"
+                          step="any"
+                          placeholder={`Enter value in ${question.unit || 'units'}`}
+                          value={answers[question.id] || ''}
+                          onChange={(e) => handleAnswerChange(question.id, parseFloat(e.target.value) || '')}
+                          variant="glass"
+                          className="w-full"
+                        />
+                      ) : question.type === 'select' && question.options ? (
+                        <Select
+                          value={answers[question.id] || ''}
+                          onValueChange={(value) => handleAnswerChange(question.id, value)}
+                        >
+                          <SelectTrigger variant="glass">
+                            <SelectValue placeholder="Select an option" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {question.options.map((option) => (
+                              <SelectItem key={option} value={option.toLowerCase().replace(/\s+/g, '_')}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : null}
                     </motion.div>
                   ))}
-                </AnimatePresence>
-
-                {/* Loading Indicator */}
-                {loading && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex justify-start"
+                </div>
+                <div className="mt-6 flex gap-3">
+                  <Button
+                    onClick={handleCalculate}
+                    disabled={loading || questions.length === 0}
+                    variant="gradient"
+                    className="flex-1"
                   >
-                    <div className="glass rounded-2xl rounded-bl-md p-4">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-swachh-marigold-500 to-swachh-saffron flex items-center justify-center">
-                          <Sparkles className="w-3 h-3 text-white animate-pulse" />
-                        </div>
-                        <div className="flex space-x-1">
-                          <motion.div
-                            className="w-2 h-2 bg-swachh-marigold-500 rounded-full"
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
-                          />
-                          <motion.div
-                            className="w-2 h-2 bg-swachh-saffron rounded-full"
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
-                          />
-                          <motion.div
-                            className="w-2 h-2 bg-swachh-marigold-600 rounded-full"
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
-                          />
-                        </div>
+                    {loading ? 'Calculating...' : 'Calculate Emissions'}
+                    <CalculatorIcon className="ml-2 w-4 h-4" />
+                  </Button>
+                  <Button
+                    onClick={handleReset}
+                    variant="outline"
+                    disabled={loading}
+                  >
+                    Reset
+                  </Button>
+                </div>
+              </GlassCard>
+            )}
+
+            {/* Results */}
+            {result && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <GlassCard className="p-6" glow="orange">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-lg bg-swachh-marigold-500/10 flex items-center justify-center">
+                        <CheckCircle2 className="w-5 h-5 text-swachh-marigold-500" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-semibold font-display">
+                          Calculation Results
+                        </h2>
+                        <p className="text-sm text-muted-foreground">{formatSectorName(selectedSector)} Sector</p>
                       </div>
                     </div>
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Input Area */}
-              <div className="p-4 border-t border-border/50">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }}
-                  className="flex space-x-3"
-                >
-                  <div className="flex-1 relative">
-                    <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder="Answer the question or ask about calculations..."
-                      className="pl-10 pr-4"
-                      disabled={loading}
-                    />
                   </div>
-                  <Button
-                    type="submit"
-                    variant="gradient"
-                    disabled={loading || !input.trim()}
-                  >
-                    <Send className="w-5 h-5" />
-                  </Button>
-                </form>
-              </div>
-            </GlassCard>
+
+                  {/* Total Emissions */}
+                  <div className="mb-6 p-4 rounded-lg bg-gradient-to-r from-swachh-marigold-500/10 to-swachh-saffron/10 border border-swachh-marigold-500/20">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Emissions</p>
+                        <p className="text-3xl font-bold font-display text-swachh-marigold-600">
+                          {result.total_emissions.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                          <span className="text-lg ml-2">tCO₂e</span>
+                        </p>
+                      </div>
+                      <Leaf className="w-12 h-12 text-swachh-marigold-500/30" />
+                    </div>
+                  </div>
+
+                  {/* Scope Breakdown */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="p-4 rounded-lg glass">
+                      <p className="text-xs text-muted-foreground mb-1">Scope 1</p>
+                      <p className="text-lg font-semibold">
+                        {result.scope1_emissions.toLocaleString('en-IN', { maximumFractionDigits: 2 })} tCO₂e
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Direct Emissions</p>
+                    </div>
+                    <div className="p-4 rounded-lg glass">
+                      <p className="text-xs text-muted-foreground mb-1">Scope 2</p>
+                      <p className="text-lg font-semibold">
+                        {result.scope2_emissions.toLocaleString('en-IN', { maximumFractionDigits: 2 })} tCO₂e
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Indirect (Energy)</p>
+                    </div>
+                    <div className="p-4 rounded-lg glass">
+                      <p className="text-xs text-muted-foreground mb-1">Scope 3</p>
+                      <p className="text-lg font-semibold">
+                        {result.scope3_emissions.toLocaleString('en-IN', { maximumFractionDigits: 2 })} tCO₂e
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Other Indirect</p>
+                    </div>
+                  </div>
+
+                  {/* Credits Needed & Cost */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div className="p-4 rounded-lg glass">
+                      <p className="text-xs text-muted-foreground mb-1">Carbon Credits Needed</p>
+                      <p className="text-2xl font-bold font-display">
+                        {result.credits_needed.toLocaleString('en-IN')}
+                        <span className="text-sm ml-2 font-normal text-muted-foreground">credits</span>
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-lg glass">
+                      <p className="text-xs text-muted-foreground mb-1">Estimated Cost</p>
+                      <p className="text-2xl font-bold font-display flex items-center">
+                        <IndianRupee className="w-5 h-5" />
+                        {result.cost_estimate.toLocaleString('en-IN')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Breakdown */}
+                  {result.breakdown && result.breakdown.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-sm font-semibold mb-3">Emission Breakdown</h3>
+                      <div className="space-y-2">
+                        {result.breakdown.map((item, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 rounded-lg glass"
+                          >
+                            <span className="text-sm">{item.source}</span>
+                            <Badge variant="outline" className="font-mono">
+                              {item.emissions.toLocaleString('en-IN', { maximumFractionDigits: 2 })} tCO₂e
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border/50">
+                    <Button
+                      onClick={handleFindSellers}
+                      variant="gradient"
+                      className="flex-1"
+                    >
+                      Find Matched Sellers
+                      <ArrowRight className="ml-2 w-4 h-4" />
+                    </Button>
+                    <Button
+                      onClick={handleReset}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      New Calculation
+                    </Button>
+                  </div>
+                </GlassCard>
+              </motion.div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -355,8 +382,8 @@ export default function Calculator() {
                 About Calculator
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                I'll ask you questions about your operations to calculate your carbon emissions. 
-                Answer each question, and I'll provide a detailed breakdown.
+                Enter your operational data to calculate your carbon emissions. 
+                The calculator uses standard emission factors for each sector.
               </p>
               <div className="space-y-2 text-xs text-muted-foreground">
                 <div className="flex items-start">
@@ -390,6 +417,24 @@ export default function Calculator() {
                 </p>
               </div>
             </GlassCard>
+
+            {/* Instructions */}
+            {!selectedSector && (
+              <GlassCard className="p-6" glow="green">
+                <div className="flex items-start space-x-3">
+                  <AlertCircle className="w-5 h-5 text-swachh-green-500 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold mb-2">Getting Started</h4>
+                    <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
+                      <li>Select your industry sector</li>
+                      <li>Fill in the operational data</li>
+                      <li>Click "Calculate Emissions"</li>
+                      <li>View results and find sellers</li>
+                    </ol>
+                  </div>
+                </div>
+              </GlassCard>
+            )}
           </div>
         </div>
       </div>

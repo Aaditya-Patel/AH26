@@ -129,6 +129,8 @@ export const educationAPI = {
 
 // Calculator API
 export const calculatorAPI = {
+  getQuestions: (sector: string) => 
+    apiClient.get(`/api/calculator/questions/${sector}`),
   calculate: (sector: string, answers: any) => 
     apiClient.post('/api/calculator/calculate', { sector, answers }),
   chatStream: async function* (question: string, conversationState?: any) {
