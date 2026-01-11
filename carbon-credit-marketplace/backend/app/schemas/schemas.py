@@ -193,6 +193,37 @@ class ChatResponse(BaseModel):
     sources: List[str]
 
 
+# Voice/TTS/STT Schemas
+class TTSRequest(BaseModel):
+    text: str
+    voice: Optional[str] = None  # e.g., "en-US-AriaNeural"
+    rate: Optional[str] = None  # e.g., "+0%", "-10%", "+20%"
+    pitch: Optional[str] = None  # e.g., "+0Hz", "-50Hz", "+50Hz"
+    volume: Optional[str] = None  # e.g., "+0%", "-10%", "+20%"
+
+
+class TTSResponse(BaseModel):
+    audio_url: Optional[str] = None  # For direct audio response, this will be None
+    message: str = "Audio generated successfully"
+
+
+class STTResponse(BaseModel):
+    text: str
+    language: str
+    segments: List[Dict[str, Any]] = []
+
+
+class VoiceChatRequest(BaseModel):
+    question: str
+    enable_tts: bool = False  # Whether to return audio along with text response
+
+
+class VoiceChatResponse(BaseModel):
+    answer: str
+    sources: List[str]
+    audio_url: Optional[str] = None  # URL or base64 encoded audio if enable_tts is True
+
+
 # Formalities Schemas
 class WorkflowStep(BaseModel):
     step: int

@@ -330,3 +330,72 @@ export const projectsAPI = {
   getMethodologies: () =>
     apiClient.get('/api/projects/methodologies/list'),
 };
+
+// Voice API (TTS/STT)
+export const voiceAPI = {
+  // Text-to-Speech
+  textToSpeech: async (text: string, voice?: string, rate?: string, pitch?: string, volume?: string): Promise<Blob> => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const token = localStorage.getItem('token');
+    
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(`${API_URL}/api/voice/tts`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ text, voice, rate, pitch, volume }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`TTS failed: ${response.status}`);
+    }
+    
+    return await response.blob();
+  },
+  
+  // Get available voices
+  getVoices: () => apiClient.get('/api/voice/tts/voices'),
+  
+  // Speech-to-Text
+  speechToText: async (audioFile: File, language?: string, task: 'transcribe' | 'translate' = 'transcribe') => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const token = localStorage.getItem('token');
+    
+    const formData = new FormData();
+    formData.append('audio', audioFile);
+    if (language) {
+      formData.append('language', language);
+    }
+    formData.append('task', task);
+    
+    const headers: HeadersInit = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(`${API_URL}/api/voice/stt`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      throw new Error(`STT failed: ${response.status}`);
+    }
+    
+    return await response.json();
+  },
+  
+  // Voice chat (with optional TTS)
+  voiceChat: (question: string, enableTTS: boolean = false) =>
+    apiClient.post('/api/voice/chat/voice', { question, enable_tts: enableTTS }),
+  
+  // Health check
+  health: () => apiClient.get('/api/voice/health'),
+};

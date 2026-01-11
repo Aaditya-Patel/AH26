@@ -1,18 +1,25 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+<
+import { BookOpen, Send, Sparkles, MessageCircle, Mic, MicOff, Volume2, VolumeX, Loader2 } from 'lucide-react';
+
 import { BookOpen, Send, Sparkles, MessageCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import Layout from '../components/Layout';
-import { educationAPI } from '../api/client';
+import { educationAPI, voiceAPI } from '../api/client';
 import { GlassCard } from '@/components/GlassCard';
 import { GradientText } from '@/components/GradientText';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+
+import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+
 import 'highlight.js/styles/atom-one-dark.css';
+
 
 interface Message {
   role: 'user' | 'assistant';
@@ -38,6 +45,102 @@ export default function Education() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isTTSPlaying, setIsTTSPlaying] = useState<number | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Voice recording hook
+  const {
+    isRecording,
+    isProcessing: isSTTProcessing,
+    error: recorderError,
+    startRecording,
+    stopRecording,
+    cancelRecording,
+  } = useVoiceRecorder({
+    onTranscript: async (audioFile: File) => {
+      try {
+        setVoiceError(null);
+        const result = await voiceAPI.speechToText(audioFile);
+        if (result.text && result.text.trim()) {
+          setInput(result.text);
+        }
+      } catch (error: any) {
+        setVoiceError(error.message || 'Failed to transcribe audio');
+        console.error('STT error:', error);
+      }
+    },
+    onError: (error) => {
+      setVoiceError(error.message);
+    },
+  });
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleVoiceRecord = async () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      setVoiceError(null);
+      await startRecording();
+    }
+  };
+
+  const handlePlayTTS = async (messageIndex: number, text: string) => {
+    try {
+      // Stop any currently playing audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+
+      setVoiceError(null);
+      setIsTTSPlaying(messageIndex);
+
+      // Generate audio
+      const audioBlob = await voiceAPI.textToSpeech(text);
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // Play audio
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setIsTTSPlaying(null);
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        setIsTTSPlaying(null);
+        setVoiceError('Failed to play audio');
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+      };
+
+      await audio.play();
+    } catch (error: any) {
+      setIsTTSPlaying(null);
+      setVoiceError(error.message || 'Failed to generate or play audio');
+      console.error('TTS error:', error);
+    }
+  };
+
+  const handleStopTTS = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsTTSPlaying(null);
+  };
 
   const handleSendMessage = async (message: string) => {
     if (!message.trim() || loading) return;
@@ -166,6 +269,36 @@ export default function Education() {
                             <span className="text-xs font-medium text-swachh-green-500">AI Agent</span>
                           </div>
                         )}
+
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap flex-1">{message.content}</p>
+                          
+                          {/* TTS Play Button for Assistant Messages */}
+                          {message.role === 'assistant' && message.content && (
+                            <button
+                              onClick={() => {
+                                if (isTTSPlaying === index) {
+                                  handleStopTTS();
+                                } else {
+                                  handlePlayTTS(index, message.content);
+                                }
+                              }}
+                              className={cn(
+                                "p-1.5 rounded-lg transition-colors flex-shrink-0",
+                                isTTSPlaying === index
+                                  ? "bg-swachh-green-500/20 text-swachh-green-500"
+                                  : "hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                              )}
+                              title={isTTSPlaying === index ? "Stop audio" : "Play audio"}
+                            >
+                              {isTTSPlaying === index ? (
+                                <VolumeX className="w-4 h-4" />
+                              ) : (
+                                <Volume2 className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
+                        </div>
                         {message.role === 'assistant' ? (
                           <div className="prose prose-sm dark:prose-invert max-w-none">
                             <ReactMarkdown
@@ -233,6 +366,7 @@ export default function Education() {
                         ) : (
                           <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                         )}
+
                         
                         {/* Sources */}
                         {message.sources && message.sources.length > 0 && (
@@ -289,6 +423,15 @@ export default function Education() {
                 )}
               </div>
 
+              {/* Error Messages */}
+              {(voiceError || recorderError) && (
+                <div className="px-4 py-2 bg-red-500/10 border-t border-red-500/20">
+                  <p className="text-xs text-red-500">
+                    {voiceError || recorderError}
+                  </p>
+                </div>
+              )}
+
               {/* Input Area */}
               <div className="p-4 border-t border-border/50">
                 <form
@@ -296,26 +439,64 @@ export default function Education() {
                     e.preventDefault();
                     handleSendMessage(input);
                   }}
-                  className="flex space-x-3"
+                  className="flex space-x-2"
                 >
+                  {/* Voice Record Button */}
+                  <Button
+                    type="button"
+                    variant={isRecording ? "destructive" : "outline"}
+                    size="icon"
+                    onClick={handleVoiceRecord}
+                    disabled={loading || isSTTProcessing}
+                    className={cn(
+                      "flex-shrink-0",
+                      isRecording && "animate-pulse"
+                    )}
+                    title={isRecording ? "Stop recording" : "Start voice recording"}
+                  >
+                    {isSTTProcessing ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : isRecording ? (
+                      <MicOff className="w-5 h-5" />
+                    ) : (
+                      <Mic className="w-5 h-5" />
+                    )}
+                  </Button>
+
                   <div className="flex-1 relative">
                     <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <Input
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      placeholder="Ask about carbon credits..."
+                      placeholder={isRecording ? "Recording... (click mic to stop)" : "Ask about carbon credits or use voice..."}
                       className="pl-10 pr-4"
-                      disabled={loading}
+                      disabled={loading || isRecording || isSTTProcessing}
                     />
                   </div>
                   <Button
                     type="submit"
                     variant="gradient"
-                    disabled={loading || !input.trim()}
+                    disabled={loading || !input.trim() || isRecording || isSTTProcessing}
                   >
                     <Send className="w-5 h-5" />
                   </Button>
                 </form>
+                
+                {/* Recording Indicator */}
+                {isRecording && (
+                  <div className="mt-2 flex items-center space-x-2 text-xs text-muted-foreground">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                    <span>Recording... Click the microphone to stop</span>
+                  </div>
+                )}
+                
+                {/* Processing Indicator */}
+                {isSTTProcessing && (
+                  <div className="mt-2 flex items-center space-x-2 text-xs text-muted-foreground">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Processing audio...</span>
+                  </div>
+                )}
               </div>
             </GlassCard>
           </div>
